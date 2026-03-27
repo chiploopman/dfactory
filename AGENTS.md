@@ -8,7 +8,7 @@ This repository contains DFactory, a Storybook-like PDF template catalog, previe
 - `packages/adapter-react`: React template rendering adapter.
 - `packages/renderer-playwright`: HTML-to-PDF rendering runtime.
 - `packages/server`: API endpoints, auth, OpenAPI, static UI serving.
-- `packages/ui`: Storybook-like catalog and playground UI with shadcn-style components.
+- `packages/ui`: Storybook-like catalog and playground UI with official shadcn v4 components.
 - `packages/cli`: command entrypoint for `dev`, `build`, `serve`, `index`, `doctor`.
 - `packages/create-dfactory`: bootstrap generator (`create dfactory`).
 
@@ -25,4 +25,4 @@ This repository contains DFactory, a Storybook-like PDF template catalog, previe
 - Maintain API compatibility for documented routes and template contracts.
 
 ## Skills routing
-Use `.agents/skills/README.md` to select the correct repo-local skill module for UI, templates, adapters, Playwright, and deployment workflows.
+Use `.agents/skills/README.md` for repo-local modules (templates, adapters, Playwright, deployment). For UI work, use official shadcn v4 tooling via `packages/ui/components.json`.

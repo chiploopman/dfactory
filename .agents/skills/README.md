@@ -2,9 +2,9 @@
 
 Use these repo-local skills when working in this codebase:
 
-1. `shadcn-ui-workflow`
-   - Trigger when touching `packages/ui`.
-   - Requires using shadcn-style primitives before custom components.
+1. `shadcn`
+   - Official shadcn skill installed from `shadcn/ui`.
+   - Trigger for all work in `packages/ui` and follow `packages/ui/components.json`.
 
 2. `dfactory-template-authoring`
    - Trigger when adding or editing template contracts under `src/templates/*/template.tsx`.
