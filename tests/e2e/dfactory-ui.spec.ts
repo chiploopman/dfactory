@@ -64,13 +64,26 @@ test("dev mode: catalog, payload edit, html/pdf preview, generate, dock panel be
   expect(generateResponse.headers()["content-type"]).toContain("application/pdf");
 
   await expect(page.getByTestId("bottom-dock")).toBeVisible();
+  await expect(page.getByTestId("bottom-dock")).toHaveAttribute("data-sticky", "true");
   await expect(page.getByTestId("bottom-panel")).toHaveCount(0);
+
+  const viewport = page.viewportSize();
+  const dockBounds = await page.getByTestId("bottom-dock").boundingBox();
+  expect(viewport).toBeTruthy();
+  expect(dockBounds).toBeTruthy();
+  expect(Math.abs((dockBounds?.x ?? 0) - 0)).toBeLessThanOrEqual(2);
+  expect(Math.abs((dockBounds?.width ?? 0) - (viewport?.width ?? 0))).toBeLessThanOrEqual(2);
 
   await page.getByTestId("dock-tab-schema").click();
   await expect(page.getByTestId("bottom-panel")).toBeVisible();
   await expect(page.getByTestId("schema-view")).toContainText("invoiceNumber");
 
   await page.getByTestId("dock-tab-schema").click();
+  await expect(page.getByTestId("bottom-panel")).toHaveCount(0);
+
+  await page.getByTestId("dock-tab-schema").click();
+  await expect(page.getByTestId("bottom-panel")).toBeVisible();
+  await page.getByTestId("bottom-panel-collapse").click();
   await expect(page.getByTestId("bottom-panel")).toHaveCount(0);
 
   await page.getByTestId("dock-tab-source").click();
