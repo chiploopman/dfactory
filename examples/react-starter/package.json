@@ -15,6 +15,7 @@
   "devDependencies": {
     "@dfactory/adapter-react": "workspace:*",
     "@dfactory/cli": "workspace:*",
-    "@dfactory/core": "workspace:*"
+    "@dfactory/core": "workspace:*",
+    "@types/react": "^19.1.13"
   }
 }

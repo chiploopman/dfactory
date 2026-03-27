@@ -1,7 +1,14 @@
 {
-  "extends": "./tsconfig.base.json",
-  "compilerOptions": {
-    "noEmit": true
-  },
-  "include": ["packages", "tests", "examples", "playwright.config.ts"]
+  "files": [],
+  "references": [
+    { "path": "./packages/adapter-react" },
+    { "path": "./packages/cli" },
+    { "path": "./packages/core" },
+    { "path": "./packages/create-dfactory" },
+    { "path": "./packages/renderer-playwright" },
+    { "path": "./packages/server" },
+    { "path": "./packages/ui" },
+    { "path": "./examples/react-starter" },
+    { "path": "./tests" }
+  ]
 }
