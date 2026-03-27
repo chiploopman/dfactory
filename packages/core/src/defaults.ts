@@ -9,7 +9,8 @@ export const DEFAULT_CONFIG: DFactoryConfig = {
     ignore: ["**/node_modules/**", "**/dist/**"],
     compatibilityGlobEnabled: false
   },
-  adapters: ["@dfactory/adapter-react"],
+  plugins: ["@dfactory/framework-react"],
+  moduleLoader: undefined,
   auth: {
     mode: "apiKey",
     apiKeys: [],

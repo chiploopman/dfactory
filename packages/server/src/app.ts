@@ -5,7 +5,6 @@ import cors from "@fastify/cors";
 import fastifyStatic from "@fastify/static";
 import swagger from "@fastify/swagger";
 import swaggerUi from "@fastify/swagger-ui";
-import { reactAdapter } from "@dfactory/adapter-react";
 import { createRegistry } from "@dfactory/core";
 import { createPlaywrightPdfRenderer } from "@dfactory/renderer-playwright";
 import chokidar from "chokidar";
@@ -32,6 +31,20 @@ function isPayloadValidationError(error: unknown): error is Error {
   return error instanceof Error && error.message.startsWith("Payload validation failed:");
 }
 
+function deriveTemplateWatchGlobs(templateGlobs: string[]): string[] {
+  const derived = templateGlobs.map((globPattern) => {
+    const marker = "/*/template.";
+    const markerIndex = globPattern.indexOf(marker);
+    if (markerIndex === -1) {
+      return globPattern;
+    }
+
+    return `${globPattern.slice(0, markerIndex)}/**/*`;
+  });
+
+  return [...new Set([...templateGlobs, ...derived])];
+}
+
 export async function createDFactoryServer(options: DFactoryServerOptions) {
   const app = Fastify({
     logger: true
@@ -41,8 +54,7 @@ export async function createDFactoryServer(options: DFactoryServerOptions) {
 
   const registry = await createRegistry({
     cwd: options.cwd,
-    configPath: options.configPath,
-    adapters: [reactAdapter]
+    configPath: options.configPath
   });
 
   const config = registry.getConfig();
@@ -103,6 +115,7 @@ export async function createDFactoryServer(options: DFactoryServerOptions) {
 
   app.get("/api/runtime", async () => ({
     isProduction,
+    runtime: registry.getRuntimeInfo(),
     ui: {
       exposeInProd: config.ui.exposeInProd,
       sourceInProd: config.ui.sourceInProd,
@@ -277,6 +290,8 @@ export async function createDFactoryServer(options: DFactoryServerOptions) {
       ignoreInitial: true
     });
 
+    watcher.add(deriveTemplateWatchGlobs(config.templates.globs));
+
     const refresh = async () => {
       try {
         await registry.refresh();
@@ -311,6 +326,7 @@ export async function createDFactoryServer(options: DFactoryServerOptions) {
     if (watcher) {
       await watcher.close();
     }
+    await registry.close();
     await renderer.close();
   });
 

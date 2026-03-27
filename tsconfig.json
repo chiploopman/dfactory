@@ -2,13 +2,17 @@
   "files": [],
   "references": [
     { "path": "./packages/adapter-react" },
+    { "path": "./packages/adapter-vue" },
     { "path": "./packages/cli" },
     { "path": "./packages/core" },
     { "path": "./packages/create-dfactory" },
+    { "path": "./packages/module-loader-bundle" },
+    { "path": "./packages/module-loader-vite" },
     { "path": "./packages/renderer-playwright" },
     { "path": "./packages/server" },
     { "path": "./packages/ui" },
     { "path": "./examples/react-starter" },
+    { "path": "./examples/vue-starter" },
     { "path": "./tests" }
   ]
 }

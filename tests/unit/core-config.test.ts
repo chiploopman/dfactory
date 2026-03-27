@@ -12,7 +12,9 @@ describe("core config", () => {
     const { config } = await loadDFactoryConfig(cwd);
 
     expect(config.templates.globs).toEqual(DEFAULT_CONFIG.templates.globs);
-    expect(config.adapters).toContain("@dfactory/adapter-react");
+    expect(config.plugins).toContain("@dfactory/framework-react");
+    expect(config.plugins).not.toContain("@dfactory/framework-vue");
+    expect(config.moduleLoader).toBeUndefined();
     expect(config.renderer.engine).toBe("playwright");
   });
 });

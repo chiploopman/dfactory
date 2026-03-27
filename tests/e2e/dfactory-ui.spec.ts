@@ -1,5 +1,13 @@
 import { expect, test } from "@playwright/test";
 
+function getProdUrl(projectName: string): string {
+  if (projectName.startsWith("vue-")) {
+    return "http://127.0.0.1:3320";
+  }
+
+  return "http://127.0.0.1:3220";
+}
+
 test("dev mode: catalog, payload edit, html/pdf preview, generate, dock panel behavior", async ({ page }) => {
   await page.goto("/");
 
@@ -8,9 +16,8 @@ test("dev mode: catalog, payload edit, html/pdf preview, generate, dock panel be
   await page.locator("[data-template-id='invoice']").click();
   await expect(page.getByTestId("topbar-preview-button")).toBeEnabled();
   await expect(page.getByTestId("bottom-dock")).toBeVisible();
-
-  await page.getByTestId("dock-tab-payload").click();
   await expect(page.getByTestId("bottom-panel")).toBeVisible();
+  await expect(page.getByTestId("dock-tab-payload")).toHaveAttribute("aria-selected", "true");
   await expect(page.getByTestId("payload-editor")).toBeVisible();
 
   await page.getByTestId("payload-editor").fill(
@@ -28,8 +35,6 @@ test("dev mode: catalog, payload edit, html/pdf preview, generate, dock panel be
       2
     )
   );
-  await page.getByTestId("dock-tab-payload").click();
-  await expect(page.getByTestId("bottom-panel")).toHaveCount(0);
 
   const [htmlPreviewResponse] = await Promise.all([
     page.waitForResponse((response) => {
@@ -72,7 +77,7 @@ test("dev mode: catalog, payload edit, html/pdf preview, generate, dock panel be
 
   await expect(page.getByTestId("bottom-dock")).toBeVisible();
   await expect(page.getByTestId("bottom-dock")).toHaveAttribute("data-sticky", "true");
-  await expect(page.getByTestId("bottom-panel")).toHaveCount(0);
+  await expect(page.getByTestId("bottom-panel")).toBeVisible();
 
   const viewport = page.viewportSize();
   const dockBounds = await page.getByTestId("bottom-dock").boundingBox();
@@ -80,6 +85,34 @@ test("dev mode: catalog, payload edit, html/pdf preview, generate, dock panel be
   expect(dockBounds).toBeTruthy();
   expect(Math.abs((dockBounds?.x ?? 0) - 0)).toBeLessThanOrEqual(2);
   expect(Math.abs((dockBounds?.width ?? 0) - (viewport?.width ?? 0))).toBeLessThanOrEqual(2);
+  const resizeHandle = page.locator(".bottom-panel-resize-handle").first();
+  await expect(resizeHandle).toBeVisible();
+  const resizeHandleBounds = await resizeHandle.boundingBox();
+  expect(resizeHandleBounds).toBeTruthy();
+  expect((resizeHandleBounds?.width ?? 0)).toBeGreaterThan((resizeHandleBounds?.height ?? 0));
+
+  const initialPanelBounds = await page.getByTestId("bottom-panel").boundingBox();
+  expect(initialPanelBounds).toBeTruthy();
+  const handleCenterX = (resizeHandleBounds?.x ?? 0) + (resizeHandleBounds?.width ?? 0) / 2;
+  const handleCenterY = (resizeHandleBounds?.y ?? 0) + (resizeHandleBounds?.height ?? 0) / 2;
+  await page.mouse.move(handleCenterX, handleCenterY);
+  await page.mouse.down();
+  await page.mouse.move(handleCenterX, handleCenterY - 140, { steps: 16 });
+  await page.mouse.up();
+
+  const expandedPanelBounds = await page.getByTestId("bottom-panel").boundingBox();
+  expect(expandedPanelBounds).toBeTruthy();
+  const expandedDelta = Math.abs((expandedPanelBounds?.height ?? 0) - (initialPanelBounds?.height ?? 0));
+  expect(expandedDelta).toBeGreaterThan(20);
+
+  await page.mouse.move(handleCenterX, handleCenterY - 140);
+  await page.mouse.down();
+  await page.mouse.move(handleCenterX, 8, { steps: 24 });
+  await page.mouse.up();
+
+  const maxPanelBounds = await page.getByTestId("bottom-panel").boundingBox();
+  expect(maxPanelBounds).toBeTruthy();
+  expect((maxPanelBounds?.height ?? 0)).toBeLessThanOrEqual((viewport?.height ?? 0) * 0.72);
 
   await page.getByTestId("dock-tab-schema").click();
   await expect(page.getByTestId("bottom-panel")).toBeVisible();
@@ -102,16 +135,19 @@ test("dev mode: catalog, payload edit, html/pdf preview, generate, dock panel be
   await expect(page.getByTestId("playground-curl")).toContainText("/document/preview");
 });
 
-test("prod mode: source and playground tabs are hidden by default", async ({ page }) => {
-  await page.goto("http://127.0.0.1:3220");
+test("prod mode: source and playground tabs are hidden by default", async ({ page }, testInfo) => {
+  await page.goto(getProdUrl(testInfo.project.name));
 
   await expect(page.getByTestId("dfactory-app")).toBeVisible();
   await expect(page.locator("[data-template-id='invoice']")).toBeVisible();
   await expect(page.getByTestId("bottom-dock")).toBeVisible();
   await expect(page.getByTestId("dock-tab-payload")).toBeVisible();
+  await expect(page.getByTestId("dock-tab-payload")).toHaveAttribute("aria-selected", "true");
   await expect(page.getByTestId("dock-tab-schema")).toBeVisible();
   await expect(page.getByTestId("dock-tab-source")).toHaveCount(0);
   await expect(page.getByTestId("dock-tab-playground")).toHaveCount(0);
+  await expect(page.getByTestId("bottom-panel")).toBeVisible();
+  await expect(page.getByTestId("payload-editor")).toBeVisible();
 
   await page.getByTestId("dock-tab-schema").click();
   await expect(page.getByTestId("bottom-panel")).toBeVisible();

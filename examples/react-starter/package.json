@@ -13,9 +13,10 @@
     "zod": "^4.1.11"
   },
   "devDependencies": {
-    "@dfactory/adapter-react": "workspace:*",
+    "@dfactory/framework-react": "workspace:*",
     "@dfactory/cli": "workspace:*",
     "@dfactory/core": "workspace:*",
+    "@dfactory/module-loader-bundle": "workspace:*",
     "@types/react": "^19.1.13"
   }
 }

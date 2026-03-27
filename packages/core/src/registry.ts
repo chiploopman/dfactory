@@ -1,21 +1,26 @@
 import fs from "node:fs/promises";
 import { performance } from "node:perf_hooks";
 
-import { bundleRequire } from "bundle-require";
 import { z } from "zod";
 
-import { AdapterRegistry, loadAdaptersFromConfig } from "./adapter-registry";
+import { AdapterRegistry } from "./adapter-registry";
 import { loadDFactoryConfig } from "./config";
 import { discoverTemplateCandidates } from "./discovery";
+import { loadFrameworkPlugins, resolveModuleLoaderFactory } from "./runtime-resolver";
 import type {
   DFactoryConfig,
+  DFactoryFrameworkPlugin,
+  DFactoryModuleLoaderFactory,
+  DoctorCheckResult,
   LoadedTemplate,
   RegistryOptions,
+  RegistryRuntimeInfo,
   RenderResult,
   TemplateAdapter,
   TemplateDetails,
   TemplateMeta,
   TemplateModule,
+  TemplateModuleLoader,
   TemplateSummary
 } from "./types";
 import { inferTemplateId } from "./utils";
@@ -51,28 +56,70 @@ function assertTemplateModule(value: unknown, filePath: string): TemplateModule 
 export class DFactoryRegistry {
   private readonly cwd: string;
   private readonly configPath?: string;
-  private readonly preloadedAdapters: TemplateAdapter[];
+  private readonly preloadedPlugins: DFactoryFrameworkPlugin[];
+  private readonly preloadedModuleLoaderFactory?: DFactoryModuleLoaderFactory;
 
   private config!: DFactoryConfig;
+  private plugins: DFactoryFrameworkPlugin[] = [];
   private adapters!: AdapterRegistry;
+  private moduleLoader!: TemplateModuleLoader;
+  private runtimeInfo!: RegistryRuntimeInfo;
   private templateMap = new Map<string, LoadedTemplate>();
 
   constructor(options: RegistryOptions) {
     this.cwd = options.cwd;
     this.configPath = options.configPath;
-    this.preloadedAdapters = options.adapters ?? [];
+    this.preloadedPlugins = options.plugins ?? [];
+    this.preloadedModuleLoaderFactory = options.moduleLoaderFactory;
   }
 
   getConfig(): DFactoryConfig {
     return this.config;
   }
 
+  getRuntimeInfo(): RegistryRuntimeInfo {
+    return this.runtimeInfo;
+  }
+
   async initialize(): Promise<void> {
     const { config } = await loadDFactoryConfig(this.cwd, this.configPath);
     this.config = config;
 
-    const adapters = await loadAdaptersFromConfig(this.cwd, config, this.preloadedAdapters);
+    this.plugins = await loadFrameworkPlugins({
+      cwd: this.cwd,
+      config,
+      preloaded: this.preloadedPlugins
+    });
+
+    const adapters: TemplateAdapter[] = [];
+    for (const plugin of this.plugins) {
+      const adapter = await plugin.createAdapter();
+      if (adapter.framework !== plugin.framework) {
+        throw new Error(
+          `Plugin '${plugin.id}' returned adapter for '${adapter.framework}', expected '${plugin.framework}'.`
+        );
+      }
+      adapters.push(adapter);
+    }
     this.adapters = new AdapterRegistry(adapters);
+
+    const { factory, reference } = await resolveModuleLoaderFactory({
+      cwd: this.cwd,
+      config,
+      plugins: this.plugins,
+      preloaded: this.preloadedModuleLoaderFactory
+    });
+    this.moduleLoader = await factory.create({
+      cwd: this.cwd,
+      config: this.config,
+      plugins: this.plugins
+    });
+
+    this.runtimeInfo = {
+      pluginIds: this.plugins.map((plugin) => plugin.id),
+      frameworks: this.plugins.map((plugin) => plugin.framework),
+      moduleLoader: reference
+    };
 
     await this.refresh();
   }
@@ -82,13 +129,8 @@ export class DFactoryRegistry {
     const next = new Map<string, LoadedTemplate>();
 
     for (const candidate of candidates) {
-      const loaded = await bundleRequire<TemplateModule>({
-        filepath: candidate.filePath,
-        cwd: this.cwd,
-        format: "esm"
-      });
-
-      const moduleExports = assertTemplateModule(loaded.mod, candidate.filePath);
+      const loaded = await this.moduleLoader.load(candidate.filePath);
+      const moduleExports = assertTemplateModule(loaded, candidate.filePath);
       const parsedMeta = templateMetaSchema.parse(moduleExports.meta);
       const id = parsedMeta.id ?? inferTemplateId(candidate.filePath);
       const meta: TemplateMeta = { ...parsedMeta, id };
@@ -151,6 +193,24 @@ export class DFactoryRegistry {
     return fs.readFile(template.filePath, "utf8");
   }
 
+  async runPluginDoctorChecks(): Promise<DoctorCheckResult[]> {
+    const checks: DoctorCheckResult[] = [];
+
+    for (const plugin of this.plugins) {
+      if (!plugin.doctorChecks) {
+        continue;
+      }
+
+      const pluginChecks = await plugin.doctorChecks({
+        cwd: this.cwd,
+        config: this.config
+      });
+      checks.push(...pluginChecks);
+    }
+
+    return checks;
+  }
+
   async renderTemplate(templateId: string, payload: unknown): Promise<RenderResult> {
     const template = this.getTemplate(templateId);
 
@@ -191,6 +251,12 @@ export class DFactoryRegistry {
       generatedAt: new Date().toISOString(),
       templates: this.listTemplates()
     };
+  }
+
+  async close(): Promise<void> {
+    if (this.moduleLoader) {
+      await this.moduleLoader.close();
+    }
   }
 }
 

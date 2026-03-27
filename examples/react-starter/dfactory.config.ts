@@ -5,7 +5,8 @@ const config: DFactoryConfig = {
     globs: ["src/templates/*/template.{ts,tsx,js,jsx,mts,mtsx}"],
     compatibilityGlobEnabled: false
   },
-  adapters: ["@dfactory/adapter-react"],
+  plugins: ["@dfactory/framework-react"],
+  moduleLoader: "@dfactory/module-loader-bundle",
   auth: {
     mode: "apiKey",
     apiKeys: []

@@ -2,20 +2,12 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
-import { createRequire } from "node:module";
 
 import { createRegistry } from "@dfactory/core";
 import { startDFactoryServer } from "@dfactory/server";
+import { buildUiAssets, startUiDevServer } from "@dfactory/ui/node";
 import { Command } from "commander";
 import { chromium } from "playwright";
-import { build as viteBuild, createServer as createViteServer, mergeConfig } from "vite";
-
-const require = createRequire(import.meta.url);
-
-function packageRoot(packageName: string): string {
-  const packageJson = require.resolve(`${packageName}/package.json`);
-  return path.dirname(packageJson);
-}
 
 function normalizeHost(host: string): string {
   if (host === "0.0.0.0") {
@@ -42,22 +34,11 @@ async function runDev(options: {
     corsOrigins: [`http://${apiHost}:${options.uiPort}`]
   });
 
-  const uiRoot = packageRoot("@dfactory/ui");
-  process.env.DFACTORY_UI_PORT = String(options.uiPort);
-  process.env.VITE_DFACTORY_API_URL = `http://${apiHost}:${options.port}/api`;
-
-  const viteConfig = {
-    configFile: path.resolve(uiRoot, "vite.config.ts"),
-    root: uiRoot,
-    server: {
-      host: options.host,
-      port: options.uiPort,
-      strictPort: true
-    }
-  };
-
-  const vite = await createViteServer(viteConfig);
-  await vite.listen();
+  const vite = await startUiDevServer({
+    host: options.host,
+    uiPort: options.uiPort,
+    apiUrl: `http://${apiHost}:${options.port}/api`
+  });
 
   console.log(`\nDFactory API:  http://${apiHost}:${options.port}`);
   console.log(`DFactory UI:   http://${apiHost}:${options.uiPort}`);
@@ -73,25 +54,11 @@ async function runDev(options: {
 }
 
 async function runBuild(options: { cwd: string; uiOutDir?: string }) {
-  const uiRoot = packageRoot("@dfactory/ui");
   const outDir = options.uiOutDir ?? path.resolve(options.cwd, ".dfactory/ui");
 
   await fs.mkdir(path.dirname(outDir), { recursive: true });
 
-  await viteBuild(
-    mergeConfig(
-      {
-        configFile: path.resolve(uiRoot, "vite.config.ts"),
-        root: uiRoot
-      },
-      {
-        build: {
-          outDir,
-          emptyOutDir: true
-        }
-      }
-    )
-  );
+  await buildUiAssets({ outDir });
 
   const manifestPath = path.resolve(options.cwd, ".dfactory/build.json");
   await fs.mkdir(path.dirname(manifestPath), { recursive: true });
@@ -136,13 +103,17 @@ async function runIndex(options: { cwd: string; config?: string; output?: string
     configPath: options.config
   });
 
-  const index = await registry.buildIndex();
-  const outputPath = options.output ? path.resolve(options.cwd, options.output) : path.resolve(options.cwd, ".dfactory/templates.index.json");
+  try {
+    const index = await registry.buildIndex();
+    const outputPath = options.output ? path.resolve(options.cwd, options.output) : path.resolve(options.cwd, ".dfactory/templates.index.json");
 
-  await fs.mkdir(path.dirname(outputPath), { recursive: true });
-  await fs.writeFile(outputPath, JSON.stringify(index, null, 2));
+    await fs.mkdir(path.dirname(outputPath), { recursive: true });
+    await fs.writeFile(outputPath, JSON.stringify(index, null, 2));
 
-  console.log(`Template index written to ${outputPath}`);
+    console.log(`Template index written to ${outputPath}`);
+  } finally {
+    await registry.close();
+  }
 }
 
 async function runDoctor(options: { cwd: string; config?: string }) {
@@ -161,17 +132,30 @@ async function runDoctor(options: { cwd: string; config?: string }) {
       configPath: options.config
     });
 
-    checks.push({
-      name: "Template discovery",
-      ok: registry.listTemplates().length > 0,
-      message: `Discovered ${registry.listTemplates().length} template(s)`
-    });
+    try {
+      checks.push({
+        name: "Template discovery",
+        ok: registry.listTemplates().length > 0,
+        message: `Discovered ${registry.listTemplates().length} template(s)`
+      });
 
-    checks.push({
-      name: "Adapter loading",
-      ok: true,
-      message: "Configured adapters loaded successfully"
-    });
+      checks.push({
+        name: "Plugin loading",
+        ok: true,
+        message: `Loaded plugins: ${registry.getRuntimeInfo().pluginIds.join(", ")}`
+      });
+
+      checks.push({
+        name: "Module loader",
+        ok: true,
+        message: `Resolved module loader: ${registry.getRuntimeInfo().moduleLoader}`
+      });
+
+      const pluginChecks = await registry.runPluginDoctorChecks();
+      checks.push(...pluginChecks);
+    } finally {
+      await registry.close();
+    }
   } catch (error) {
     checks.push({
       name: "Template discovery",

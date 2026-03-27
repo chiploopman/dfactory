@@ -1,0 +1,30 @@
+{
+  "name": "@dfactory/framework-vue",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsup src/index.ts --format esm --dts",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "eslint src --ext .ts",
+    "test": "vitest run --passWithNoTests",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@dfactory/core": "workspace:*",
+    "@vitejs/plugin-vue": "^6.0.1",
+    "@vue/server-renderer": "^3.5.21",
+    "vue": "^3.5.21"
+  },
+  "devDependencies": {
+    "tsup": "^8.3.5"
+  }
+}

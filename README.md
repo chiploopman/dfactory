@@ -2,6 +2,10 @@
 
 DFactory is a Storybook-inspired platform for designing, previewing, cataloging, and generating PDF documents from code templates.
 
+Currently supported template frameworks: React and Vue.
+
+Framework runtime wiring is plugin-based (`config.plugins`) with explicit or auto-selected module loaders (`config.moduleLoader`).
+
 ## Quick start
 
 ```bash

@@ -4,8 +4,11 @@
 This repository contains DFactory, a Storybook-like PDF template catalog, preview, and generation platform.
 
 ## Architecture overview
-- `packages/core`: template discovery, registry, config, schema, adapter contracts.
-- `packages/adapter-react`: React template rendering adapter.
+- `packages/core`: template discovery, registry, config, schema, plugin contracts.
+- `packages/adapter-react`: React framework plugin package (`@dfactory/framework-react`).
+- `packages/adapter-vue`: Vue framework plugin package (`@dfactory/framework-vue`).
+- `packages/module-loader-bundle`: default TypeScript/JavaScript template module loader.
+- `packages/module-loader-vite`: transform-capable loader for frameworks that require module transforms (e.g. Vue SFC).
 - `packages/renderer-playwright`: HTML-to-PDF rendering runtime.
 - `packages/server`: API endpoints, auth, OpenAPI, static UI serving.
 - `packages/ui`: Storybook-like catalog and playground UI with official shadcn v4 components.
@@ -25,4 +28,4 @@ This repository contains DFactory, a Storybook-like PDF template catalog, previe
 - Maintain API compatibility for documented routes and template contracts.
 
 ## Skills routing
-Use `.agents/skills/README.md` for repo-local modules (templates, adapters, Playwright, deployment). For UI work, use official shadcn v4 tooling via `packages/ui/components.json`.
+Use `.agents/skills/README.md` for repo-local modules (templates, framework plugins, Playwright, deployment). For UI work, use official shadcn v4 tooling via `packages/ui/components.json`.

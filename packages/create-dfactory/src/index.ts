@@ -1,8 +1,11 @@
 #!/usr/bin/env node
 import fs from "node:fs/promises";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 import pc from "picocolors";
+
+type SupportedFramework = "react" | "vue";
 
 interface PackageJson {
   name?: string;
@@ -11,6 +14,39 @@ interface PackageJson {
   dependencies?: Record<string, string>;
   devDependencies?: Record<string, string>;
 }
+
+interface FrameworkTemplateSpec {
+  framework: SupportedFramework;
+  frameworkPluginPackage: "@dfactory/framework-react" | "@dfactory/framework-vue";
+  moduleLoaderPackage: "@dfactory/module-loader-bundle" | "@dfactory/module-loader-vite";
+  templateDirectory: string;
+}
+
+const COMMON_SCRIPTS = {
+  "dfactory:dev": "dfactory dev",
+  "dfactory:build": "dfactory build",
+  "dfactory:serve": "dfactory serve",
+  "dfactory:index": "dfactory index",
+  "dfactory:doctor": "dfactory doctor"
+} as const;
+
+const PACKAGE_DIR = path.dirname(fileURLToPath(import.meta.url));
+const TEMPLATE_BASE_DIR = path.resolve(PACKAGE_DIR, "../templates");
+
+const FRAMEWORK_SPECS: Record<SupportedFramework, FrameworkTemplateSpec> = {
+  react: {
+    framework: "react",
+    frameworkPluginPackage: "@dfactory/framework-react",
+    moduleLoaderPackage: "@dfactory/module-loader-bundle",
+    templateDirectory: "react"
+  },
+  vue: {
+    framework: "vue",
+    frameworkPluginPackage: "@dfactory/framework-vue",
+    moduleLoaderPackage: "@dfactory/module-loader-vite",
+    templateDirectory: "vue"
+  }
+};
 
 async function readJson<T>(filePath: string): Promise<T | undefined> {
   try {
@@ -36,16 +72,97 @@ function detectPackageManager(): "pnpm" | "yarn" | "npm" {
   return "npm";
 }
 
-async function ensureFile(filePath: string, contents: string): Promise<void> {
-  try {
-    await fs.access(filePath);
-  } catch {
-    await fs.mkdir(path.dirname(filePath), { recursive: true });
-    await fs.writeFile(filePath, contents);
+function hasDependency(packageJson: PackageJson | undefined, names: string[]): boolean {
+  if (!packageJson) {
+    return false;
+  }
+
+  const allDependencies = {
+    ...(packageJson.dependencies ?? {}),
+    ...(packageJson.devDependencies ?? {})
+  };
+
+  return names.some((name) => Boolean(allDependencies[name]));
+}
+
+export function detectFrameworkFromPackageJson(packageJson: PackageJson | undefined): SupportedFramework {
+  if (hasDependency(packageJson, ["vue", "nuxt"])) {
+    return "vue";
+  }
+
+  if (hasDependency(packageJson, ["react", "next"])) {
+    return "react";
+  }
+
+  return "react";
+}
+
+function renderTokens(content: string, tokens: Record<string, string>): string {
+  let rendered = content;
+  for (const [key, value] of Object.entries(tokens)) {
+    rendered = rendered.replaceAll(`{{${key}}}`, value);
+  }
+  return rendered;
+}
+
+async function copyTemplateTree(options: {
+  sourceRoot: string;
+  targetRoot: string;
+  tokens: Record<string, string>;
+}): Promise<void> {
+  const entries = await fs.readdir(options.sourceRoot, { withFileTypes: true });
+  for (const entry of entries) {
+    const sourcePath = path.resolve(options.sourceRoot, entry.name);
+    const targetPath = path.resolve(options.targetRoot, entry.name);
+
+    if (entry.isDirectory()) {
+      await fs.mkdir(targetPath, { recursive: true });
+      await copyTemplateTree({
+        sourceRoot: sourcePath,
+        targetRoot: targetPath,
+        tokens: options.tokens
+      });
+      continue;
+    }
+
+    try {
+      await fs.access(targetPath);
+      continue;
+    } catch {
+      const sourceContent = await fs.readFile(sourcePath, "utf8");
+      const rendered = renderTokens(sourceContent, options.tokens);
+      await fs.mkdir(path.dirname(targetPath), { recursive: true });
+      await fs.writeFile(targetPath, rendered);
+    }
   }
 }
 
-async function run() {
+function applyPackageUpdates(existing: PackageJson, frameworkSpec: FrameworkTemplateSpec): PackageJson {
+  const nextDependencies = {
+    ...(existing.dependencies ?? {})
+  };
+  if (!nextDependencies.zod) {
+    nextDependencies.zod = "latest";
+  }
+
+  return {
+    ...existing,
+    scripts: {
+      ...existing.scripts,
+      ...COMMON_SCRIPTS
+    },
+    dependencies: nextDependencies,
+    devDependencies: {
+      ...existing.devDependencies,
+      "@dfactory/cli": "latest",
+      "@dfactory/core": "latest",
+      [frameworkSpec.frameworkPluginPackage]: "latest",
+      [frameworkSpec.moduleLoaderPackage]: "latest"
+    }
+  };
+}
+
+export async function runCreateDFactory() {
   const targetArg = process.argv[2];
   const cwd = targetArg ? path.resolve(process.cwd(), targetArg) : process.cwd();
 
@@ -57,119 +174,28 @@ async function run() {
     version: "0.1.0"
   };
 
-  const next: PackageJson = {
-    ...existing,
-    scripts: {
-      ...existing.scripts,
-      "dfactory:dev": "dfactory dev",
-      "dfactory:build": "dfactory build",
-      "dfactory:serve": "dfactory serve",
-      "dfactory:index": "dfactory index",
-      "dfactory:doctor": "dfactory doctor"
-    },
-    devDependencies: {
-      ...existing.devDependencies,
-      "@dfactory/cli": "latest",
-      "@dfactory/core": "latest",
-      "@dfactory/adapter-react": "latest"
-    }
+  const framework = detectFrameworkFromPackageJson(existing);
+  const frameworkSpec = FRAMEWORK_SPECS[framework];
+
+  const nextPackageJson = applyPackageUpdates(existing, frameworkSpec);
+  await writeJson(packageJsonPath, nextPackageJson);
+
+  const tokens = {
+    frameworkPluginPackage: frameworkSpec.frameworkPluginPackage,
+    moduleLoaderPackage: frameworkSpec.moduleLoaderPackage
   };
 
-  await writeJson(packageJsonPath, next);
+  await copyTemplateTree({
+    sourceRoot: path.resolve(TEMPLATE_BASE_DIR, "base"),
+    targetRoot: cwd,
+    tokens
+  });
 
-  await ensureFile(
-    path.resolve(cwd, "dfactory.config.ts"),
-    `import type { DFactoryConfig } from "@dfactory/core";
-
-const config: DFactoryConfig = {
-  templates: {
-    globs: ["src/templates/*/template.{ts,tsx,js,jsx,mts,mtsx}"],
-    compatibilityGlobEnabled: false
-  },
-  adapters: ["@dfactory/adapter-react"],
-  auth: {
-    mode: "apiKey",
-    apiKeys: []
-  },
-  ui: {
-    exposeInProd: true,
-    sourceInProd: false,
-    playgroundInProd: false
-  },
-  renderer: {
-    engine: "playwright",
-    poolSize: 4,
-    timeoutMs: 30000
-  }
-};
-
-export default config;
-`
-  );
-
-  await ensureFile(
-    path.resolve(cwd, "src/templates/invoice/template.tsx"),
-    `import * as React from "react";
-import { z } from "zod";
-
-export const meta = {
-  id: "invoice",
-  title: "Invoice",
-  description: "Default starter invoice template",
-  framework: "react",
-  version: "1.0.0",
-  tags: ["billing", "starter"]
-} as const;
-
-export const schema = z.object({
-  invoiceNumber: z.string(),
-  customerName: z.string(),
-  items: z.array(
-    z.object({
-      name: z.string(),
-      qty: z.number(),
-      price: z.number()
-    })
-  )
-});
-
-type Payload = z.infer<typeof schema>;
-
-export function render(payload: Payload): React.ReactElement {
-  const total = payload.items.reduce((sum, item) => sum + item.qty * item.price, 0);
-
-  return (
-    <main style={{ fontFamily: "Inter, sans-serif", padding: "24px" }}>
-      <h1 style={{ marginBottom: "8px" }}>Invoice {payload.invoiceNumber}</h1>
-      <p style={{ color: "#555", marginTop: 0 }}>Customer: {payload.customerName}</p>
-
-      <table style={{ width: "100%", borderCollapse: "collapse", marginTop: "20px" }}>
-        <thead>
-          <tr>
-            <th style={{ textAlign: "left", borderBottom: "1px solid #ddd", padding: "8px" }}>Item</th>
-            <th style={{ textAlign: "right", borderBottom: "1px solid #ddd", padding: "8px" }}>Qty</th>
-            <th style={{ textAlign: "right", borderBottom: "1px solid #ddd", padding: "8px" }}>Price</th>
-          </tr>
-        </thead>
-        <tbody>
-          {payload.items.map((item) => (
-            <tr key={item.name}>
-              <td style={{ borderBottom: "1px solid #eee", padding: "8px" }}>{item.name}</td>
-              <td style={{ textAlign: "right", borderBottom: "1px solid #eee", padding: "8px" }}>{item.qty}</td>
-              <td style={{ textAlign: "right", borderBottom: "1px solid #eee", padding: "8px" }}>
-                \${(item.price * item.qty).toFixed(2)}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-
-      <p style={{ textAlign: "right", marginTop: "16px", fontWeight: 700 }}>Total: \${total.toFixed(2)}</p>
-    </main>
-  );
-}
-`
-  );
+  await copyTemplateTree({
+    sourceRoot: path.resolve(TEMPLATE_BASE_DIR, frameworkSpec.templateDirectory),
+    targetRoot: cwd,
+    tokens
+  });
 
   const packageManager = detectPackageManager();
   const installCmd =
@@ -180,13 +206,21 @@ export function render(payload: Payload): React.ReactElement {
         : "npm install";
 
   console.log(pc.green("\nDFactory initialized successfully."));
-  console.log(pc.cyan(`\nNext steps:`));
+  console.log(pc.cyan(`Detected framework: ${framework}`));
+  console.log(pc.cyan("\nNext steps:"));
   console.log(`1. ${installCmd}`);
-  console.log(`2. ${packageManager === "npm" ? "npx" : packageManager} dfactory dev`);
-  console.log(`3. Open http://127.0.0.1:3211`);
+  console.log(`2. ${packageManager} run dfactory:dev`);
+  console.log("3. Open http://127.0.0.1:3211");
 }
 
-run().catch((error) => {
-  console.error(pc.red(`Failed to initialize DFactory: ${error instanceof Error ? error.message : String(error)}`));
-  process.exit(1);
-});
+const isMainModule = process.argv[1]
+  ? path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)
+  : false;
+
+if (isMainModule) {
+  runCreateDFactory().catch((error) => {
+    console.error(pc.red(`Failed to initialize DFactory: ${error instanceof Error ? error.message : String(error)}`));
+    process.exit(1);
+  });
+}
+

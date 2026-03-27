@@ -21,7 +21,6 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@dfactory/adapter-react": "workspace:*",
     "@dfactory/core": "workspace:*",
     "@dfactory/renderer-playwright": "workspace:*",
     "@fastify/cors": "^11.1.0",

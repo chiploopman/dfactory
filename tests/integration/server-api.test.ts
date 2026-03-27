@@ -20,7 +20,8 @@ describe("server api", () => {
 
 const config: DFactoryConfig = {
   templates: { globs: ["src/templates/*/template.{ts,tsx}"] },
-  adapters: ["@dfactory/adapter-react"],
+  plugins: ["@dfactory/framework-react"],
+  moduleLoader: "@dfactory/module-loader-bundle",
   auth: { mode: "apiKey", apiKeys: [] },
   ui: { exposeInProd: true, sourceInProd: true, playgroundInProd: true },
   renderer: { engine: "playwright", poolSize: 1, timeoutMs: 30000 }

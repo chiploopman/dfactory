@@ -1,16 +1,45 @@
-import { useEffect, useMemo, useState } from "react";
-import { AnimatePresence, motion } from "framer-motion";
-import { AlertCircle, Braces, ChevronsDown, Code2, Eye, FileJson2, FileText, PlayCircle, TerminalSquare } from "lucide-react";
+import { useEffect, useMemo, useState } from "react"
+import { AnimatePresence, motion } from "framer-motion"
+import {
+  AlertCircle,
+  Braces,
+  ChevronsDown,
+  Code2,
+  Eye,
+  FileJson2,
+  FileText,
+  PlayCircle,
+  TerminalSquare,
+} from "lucide-react"
 
-import { TemplateCatalog } from "@/components/template-catalog";
-import { Topbar } from "@/components/topbar";
-import { Button } from "@/components/ui/button";
-import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Separator } from "@/components/ui/separator";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Textarea } from "@/components/ui/textarea";
+import { TemplateCatalog } from "@/components/template-catalog"
+import { Topbar } from "@/components/topbar"
+import { Button } from "@/components/ui/button"
+import {
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card"
+import {
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@/components/ui/empty"
+import {
+  ResizableHandle,
+  ResizablePanel,
+  ResizablePanelGroup,
+} from "@/components/ui/resizable"
+import { ScrollArea } from "@/components/ui/scroll-area"
+import { Separator } from "@/components/ui/separator"
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Textarea } from "@/components/ui/textarea"
 import {
   fetchRuntime,
   fetchTemplateSchema,
@@ -18,10 +47,14 @@ import {
   fetchTemplates,
   generateDocument,
   previewDocument,
-  type RenderMode
-} from "@/lib/api";
-import { cn } from "@/lib/utils";
-import type { PreviewHtmlResponse, RuntimeConfig, TemplateSummary } from "@/types/api";
+  type RenderMode,
+} from "@/lib/api"
+import { cn } from "@/lib/utils"
+import type {
+  PreviewHtmlResponse,
+  RuntimeConfig,
+  TemplateSummary,
+} from "@/types/api"
 
 const DEFAULT_PAYLOAD = {
   invoiceNumber: "INV-1001",
@@ -29,249 +62,390 @@ const DEFAULT_PAYLOAD = {
   issuedAt: "2026-03-27",
   items: [
     { name: "Consulting", qty: 2, price: 420 },
-    { name: "Support", qty: 1, price: 180 }
-  ]
-};
+    { name: "Support", qty: 1, price: 180 },
+  ],
+}
 
-type PanelTab = "payload" | "schema" | "source" | "playground";
+type PanelTab = "payload" | "schema" | "source" | "playground"
 
 interface PanelTabItem {
-  id: PanelTab;
-  label: string;
-  icon: typeof FileJson2;
+  id: PanelTab
+  label: string
+  icon: typeof FileJson2
 }
 
 function pretty(value: unknown): string {
-  return JSON.stringify(value, null, 2);
+  return JSON.stringify(value, null, 2)
 }
 
 export default function App() {
-  const [templates, setTemplates] = useState<TemplateSummary[]>([]);
-  const [selectedId, setSelectedId] = useState<string>();
-  const [schemaJson, setSchemaJson] = useState<string>("{}");
-  const [sourceCode, setSourceCode] = useState<string>("// Source unavailable");
-  const [previewHtml, setPreviewHtml] = useState<string>();
-  const [previewPdfUrl, setPreviewPdfUrl] = useState<string>();
-  const [payloadText, setPayloadText] = useState<string>(pretty(DEFAULT_PAYLOAD));
-  const [runtime, setRuntime] = useState<RuntimeConfig>();
-  const [query, setQuery] = useState("");
-  const [mode, setMode] = useState<RenderMode>("html");
-  const [status, setStatus] = useState<string>("Ready");
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string>();
-  const [panelOpen, setPanelOpen] = useState(false);
-  const [activePanelTab, setActivePanelTab] = useState<PanelTab>("payload");
+  const [templates, setTemplates] = useState<TemplateSummary[]>([])
+  const [selectedId, setSelectedId] = useState<string>()
+  const [schemaJson, setSchemaJson] = useState<string>("{}")
+  const [sourceCode, setSourceCode] = useState<string>("// Source unavailable")
+  const [previewHtml, setPreviewHtml] = useState<string>()
+  const [previewPdfUrl, setPreviewPdfUrl] = useState<string>()
+  const [payloadText, setPayloadText] = useState<string>(
+    pretty(DEFAULT_PAYLOAD),
+  )
+  const [runtime, setRuntime] = useState<RuntimeConfig>()
+  const [query, setQuery] = useState("")
+  const [mode, setMode] = useState<RenderMode>("html")
+  const [status, setStatus] = useState<string>("Ready")
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string>()
+  const [panelOpen, setPanelOpen] = useState(true)
+  const [activePanelTab, setActivePanelTab] = useState<PanelTab>("payload")
+  const [desktopPanelSize, setDesktopPanelSize] = useState(33)
+  const [isDesktop, setIsDesktop] = useState(() => {
+    if (typeof window === "undefined") {
+      return false
+    }
+    return window.matchMedia("(min-width: 768px)").matches
+  })
 
   const selectedTemplate = useMemo(
     () => templates.find((template) => template.id === selectedId),
-    [templates, selectedId]
-  );
+    [templates, selectedId],
+  )
 
-  const sourceEnabled = runtime ? !runtime.isProduction || runtime.ui.sourceInProd : true;
-  const playgroundEnabled = runtime ? !runtime.isProduction || runtime.ui.playgroundInProd : true;
+  const sourceEnabled = runtime
+    ? !runtime.isProduction || runtime.ui.sourceInProd
+    : true
+  const playgroundEnabled = runtime
+    ? !runtime.isProduction || runtime.ui.playgroundInProd
+    : true
 
   const panelTabs = useMemo<PanelTabItem[]>(() => {
     const tabs: PanelTabItem[] = [
       { id: "payload", label: "Payload", icon: Braces },
-      { id: "schema", label: "Schema", icon: FileJson2 }
-    ];
+      { id: "schema", label: "Schema", icon: FileJson2 },
+    ]
 
     if (sourceEnabled) {
-      tabs.push({ id: "source", label: "Source", icon: Code2 });
+      tabs.push({ id: "source", label: "Source", icon: Code2 })
     }
 
     if (playgroundEnabled) {
-      tabs.push({ id: "playground", label: "API Playground", icon: TerminalSquare });
+      tabs.push({
+        id: "playground",
+        label: "API Playground",
+        icon: TerminalSquare,
+      })
     }
 
-    return tabs;
-  }, [sourceEnabled, playgroundEnabled]);
+    return tabs
+  }, [sourceEnabled, playgroundEnabled])
 
   const activePanel = useMemo(() => {
-    return panelTabs.find((tab) => tab.id === activePanelTab) ?? panelTabs[0];
-  }, [panelTabs, activePanelTab]);
+    return panelTabs.find((tab) => tab.id === activePanelTab) ?? panelTabs[0]
+  }, [panelTabs, activePanelTab])
 
   async function loadTemplates() {
-    const [runtimeConfig, templateList] = await Promise.all([fetchRuntime(), fetchTemplates()]);
+    const [runtimeConfig, templateList] = await Promise.all([
+      fetchRuntime(),
+      fetchTemplates(),
+    ])
 
-    setRuntime(runtimeConfig);
-    setTemplates(templateList);
+    setRuntime(runtimeConfig)
+    setTemplates(templateList)
 
     if (templateList.length > 0 && !selectedId) {
-      setSelectedId(templateList[0].id);
+      setSelectedId(templateList[0].id)
     }
   }
 
   async function loadTemplateAssets(templateId: string) {
-    const [schema] = await Promise.all([fetchTemplateSchema(templateId)]);
-    setSchemaJson(pretty(schema));
+    const [schema] = await Promise.all([fetchTemplateSchema(templateId)])
+    setSchemaJson(pretty(schema))
 
     if (sourceEnabled) {
       try {
-        const source = await fetchTemplateSource(templateId);
-        setSourceCode(source);
+        const source = await fetchTemplateSource(templateId)
+        setSourceCode(source)
       } catch {
-        setSourceCode("// Source disabled or unavailable");
+        setSourceCode("// Source disabled or unavailable")
       }
     } else {
-      setSourceCode("// Source disabled in production");
+      setSourceCode("// Source disabled in production")
     }
   }
 
   useEffect(() => {
     loadTemplates().catch((loadError) => {
-      setError(loadError instanceof Error ? loadError.message : "Failed to initialize DFactory UI.");
-    });
-  }, []);
+      setError(
+        loadError instanceof Error
+          ? loadError.message
+          : "Failed to initialize DFactory UI.",
+      )
+    })
+  }, [])
 
   useEffect(() => {
     if (!selectedId) {
-      return;
+      return
     }
 
     loadTemplateAssets(selectedId).catch((loadError) => {
-      setError(loadError instanceof Error ? loadError.message : "Failed to load template assets.");
-    });
-  }, [selectedId, sourceEnabled]);
+      setError(
+        loadError instanceof Error
+          ? loadError.message
+          : "Failed to load template assets.",
+      )
+    })
+  }, [selectedId, sourceEnabled])
 
   useEffect(() => {
     if (!panelTabs.some((tab) => tab.id === activePanelTab)) {
-      setActivePanelTab(panelTabs[0]?.id ?? "payload");
+      setActivePanelTab(panelTabs[0]?.id ?? "payload")
     }
-  }, [panelTabs, activePanelTab]);
+  }, [panelTabs, activePanelTab])
 
   useEffect(() => {
     return () => {
       if (previewPdfUrl) {
-        URL.revokeObjectURL(previewPdfUrl);
+        URL.revokeObjectURL(previewPdfUrl)
       }
-    };
-  }, [previewPdfUrl]);
+    }
+  }, [previewPdfUrl])
 
   useEffect(() => {
     if (!panelOpen) {
-      return;
+      return
     }
 
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
-        setPanelOpen(false);
+        setPanelOpen(false)
       }
-    };
+    }
 
-    window.addEventListener("keydown", onKeyDown);
+    window.addEventListener("keydown", onKeyDown)
     return () => {
-      window.removeEventListener("keydown", onKeyDown);
-    };
-  }, [panelOpen]);
+      window.removeEventListener("keydown", onKeyDown)
+    }
+  }, [panelOpen])
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return
+    }
+
+    const mediaQuery = window.matchMedia("(min-width: 768px)")
+    const onChange = (event: MediaQueryListEvent) => {
+      setIsDesktop(event.matches)
+    }
+
+    setIsDesktop(mediaQuery.matches)
+    mediaQuery.addEventListener("change", onChange)
+    return () => {
+      mediaQuery.removeEventListener("change", onChange)
+    }
+  }, [])
 
   function readPayload() {
     try {
-      return JSON.parse(payloadText) as unknown;
+      return JSON.parse(payloadText) as unknown
     } catch {
-      throw new Error("Payload must be valid JSON.");
+      throw new Error("Payload must be valid JSON.")
     }
   }
 
   function handleDockTabClick(tab: PanelTab) {
     if (activePanelTab === tab && panelOpen) {
-      setPanelOpen(false);
-      return;
+      setPanelOpen(false)
+      return
     }
 
-    setActivePanelTab(tab);
-    setPanelOpen(true);
+    setActivePanelTab(tab)
+    setPanelOpen(true)
   }
 
   async function runPreview() {
     if (!selectedTemplate) {
-      return;
+      return
     }
 
-    setBusy(true);
-    setError(undefined);
+    setBusy(true)
+    setError(undefined)
 
     try {
-      const payload = readPayload();
+      const payload = readPayload()
       const response = await previewDocument({
         templateId: selectedTemplate.id,
         payload,
-        mode
-      });
+        mode,
+      })
 
       if (mode === "html") {
-        const body = response as PreviewHtmlResponse;
-        setPreviewHtml(body.html);
-        setStatus(`Preview rendered in ${Math.round(body.diagnostics.renderMs ?? 0)}ms`);
+        const body = response as PreviewHtmlResponse
+        setPreviewHtml(body.html)
+        setStatus(
+          `Preview rendered in ${Math.round(body.diagnostics.renderMs ?? 0)}ms`,
+        )
         if (previewPdfUrl) {
-          URL.revokeObjectURL(previewPdfUrl);
-          setPreviewPdfUrl(undefined);
+          URL.revokeObjectURL(previewPdfUrl)
+          setPreviewPdfUrl(undefined)
         }
       } else {
-        const blob = response as Blob;
+        const blob = response as Blob
         if (previewPdfUrl) {
-          URL.revokeObjectURL(previewPdfUrl);
+          URL.revokeObjectURL(previewPdfUrl)
         }
-        const url = URL.createObjectURL(blob);
-        setPreviewPdfUrl(url);
-        setStatus("PDF preview generated");
+        const url = URL.createObjectURL(blob)
+        setPreviewPdfUrl(url)
+        setStatus("PDF preview generated")
       }
     } catch (previewError) {
-      setError(previewError instanceof Error ? previewError.message : "Preview failed.");
-      setStatus("Preview failed");
+      setError(
+        previewError instanceof Error
+          ? previewError.message
+          : "Preview failed.",
+      )
+      setStatus("Preview failed")
     } finally {
-      setBusy(false);
+      setBusy(false)
     }
   }
 
   async function runGenerate() {
     if (!selectedTemplate) {
-      return;
+      return
     }
 
-    setBusy(true);
-    setError(undefined);
+    setBusy(true)
+    setError(undefined)
 
     try {
-      const payload = readPayload();
+      const payload = readPayload()
       const response = await generateDocument({
         templateId: selectedTemplate.id,
         payload,
-        mode
-      });
+        mode,
+      })
 
       if (mode === "pdf") {
-        const blob = response as Blob;
-        const url = URL.createObjectURL(blob);
-        const anchor = document.createElement("a");
-        anchor.href = url;
-        anchor.download = `${selectedTemplate.id}.pdf`;
-        anchor.click();
-        URL.revokeObjectURL(url);
+        const blob = response as Blob
+        const url = URL.createObjectURL(blob)
+        const anchor = document.createElement("a")
+        anchor.href = url
+        anchor.download = `${selectedTemplate.id}.pdf`
+        anchor.click()
+        URL.revokeObjectURL(url)
       } else {
-        const body = response as { html: string };
-        setPreviewHtml(body.html);
+        const body = response as { html: string }
+        setPreviewHtml(body.html)
       }
 
-      setStatus(`Generate completed (${mode.toUpperCase()})`);
+      setStatus(`Generate completed (${mode.toUpperCase()})`)
     } catch (generationError) {
-      setError(generationError instanceof Error ? generationError.message : "Generate failed.");
-      setStatus("Generate failed");
+      setError(
+        generationError instanceof Error
+          ? generationError.message
+          : "Generate failed.",
+      )
+      setStatus("Generate failed")
     } finally {
-      setBusy(false);
+      setBusy(false)
     }
   }
 
-  return (
-    <div className="relative flex h-screen flex-col overflow-hidden" data-testid="dfactory-app">
-      <Topbar
-        selectedTemplate={selectedTemplate}
-        onPreview={runPreview}
-        onGenerate={runGenerate}
-        busy={busy}
-      />
+  const clampedDesktopPanelSize = Math.min(70, Math.max(24, desktopPanelSize))
+  const workspacePanelSize = Math.max(30, 100 - clampedDesktopPanelSize)
 
-      <div className="flex min-h-0 flex-1 pb-14">
+  function renderInspectorBody() {
+    return (
+      <div className="min-h-0 flex-1 p-4">
+        {activePanel.id === "payload" ? (
+          <Textarea
+            value={payloadText}
+            onChange={(event) => setPayloadText(event.target.value)}
+            className="h-full min-h-full font-mono text-xs"
+            data-testid="payload-editor"
+          />
+        ) : null}
+
+        {activePanel.id === "schema" ? (
+          <ScrollArea className="h-full rounded-lg border bg-muted/30">
+            <pre className="p-3 text-xs" data-testid="schema-view">
+              {schemaJson}
+            </pre>
+          </ScrollArea>
+        ) : null}
+
+        {activePanel.id === "source" ? (
+          <ScrollArea className="h-full rounded-lg border bg-muted/30">
+            <pre className="p-3 text-xs" data-testid="source-view">
+              {sourceCode}
+            </pre>
+          </ScrollArea>
+        ) : null}
+
+        {activePanel.id === "playground" ? (
+          <ScrollArea className="h-full rounded-lg border bg-muted/30">
+            <div className="flex flex-col gap-3 p-3 text-xs">
+              <p>
+                <strong>Preview:</strong> POST{" "}
+                <code>/api/document/preview</code>
+              </p>
+              <p>
+                <strong>Generate:</strong> POST{" "}
+                <code>/api/document/generate</code>
+              </p>
+              <pre
+                className="overflow-auto rounded-lg bg-background p-3"
+                data-testid="playground-curl"
+              >
+                {`curl -X POST ${import.meta.env.VITE_DFACTORY_API_URL ?? "http://127.0.0.1:3210/api"}/document/preview \\
+  -H 'content-type: application/json' \\
+  -d '{"templateId":"${selectedTemplate?.id ?? "invoice"}","payload":${payloadText},"mode":"${mode}"}'`}
+              </pre>
+            </div>
+          </ScrollArea>
+        ) : null}
+      </div>
+    )
+  }
+
+  function renderInspectorPanelContent() {
+    return (
+      <div className="flex h-full flex-col">
+        <div className="flex items-start justify-between gap-3 px-4 py-3">
+          <div className="flex flex-col gap-1">
+            <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+              Inspector
+            </p>
+            <div className="flex items-center gap-2 text-sm font-semibold">
+              <activePanel.icon className="h-4 w-4" />
+              {activePanel.label}
+            </div>
+          </div>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-sm"
+            onClick={() => setPanelOpen(false)}
+            aria-label="Collapse bottom panel"
+            data-testid="bottom-panel-collapse"
+          >
+            <ChevronsDown className="h-4 w-4" />
+          </Button>
+        </div>
+        <Separator />
+        {renderInspectorBody()}
+      </div>
+    )
+  }
+
+  function renderWorkspace(isMobile: boolean) {
+    const errorPositionClass = isMobile
+      ? panelOpen
+        ? "bottom-[calc(60vh+4.5rem)]"
+        : "bottom-16"
+      : "bottom-4"
+
+    return (
+      <div className="flex h-full min-h-0">
         <TemplateCatalog
           templates={templates}
           selectedId={selectedId}
@@ -292,7 +466,9 @@ export default function App() {
                 <CardAction>
                   <Tabs
                     value={mode}
-                    onValueChange={(nextValue) => setMode(nextValue as RenderMode)}
+                    onValueChange={(nextValue) =>
+                      setMode(nextValue as RenderMode)
+                    }
                     className="gap-0"
                     data-testid="preview-mode-tabs"
                   >
@@ -317,47 +493,63 @@ export default function App() {
                       data-testid="preview-frame"
                     />
                   ) : (
-                    <Empty className="h-full rounded-lg border bg-muted/15" data-testid="preview-empty-html">
+                    <Empty
+                      className="h-full rounded-lg border bg-muted/15"
+                      data-testid="preview-empty-html"
+                    >
                       <EmptyHeader>
                         <EmptyMedia variant="icon">
                           <Code2 />
                         </EmptyMedia>
                         <EmptyTitle>No HTML preview yet</EmptyTitle>
-                        <EmptyDescription>Run preview to render this template as HTML.</EmptyDescription>
+                        <EmptyDescription>
+                          Run preview to render this template as HTML.
+                        </EmptyDescription>
                       </EmptyHeader>
                       <EmptyContent>
-                        <Button size="sm" onClick={runPreview} disabled={busy || !selectedTemplate}>
+                        <Button
+                          size="sm"
+                          onClick={runPreview}
+                          disabled={busy || !selectedTemplate}
+                        >
                           <Eye data-icon="inline-start" />
                           Preview
                         </Button>
                       </EmptyContent>
                     </Empty>
                   )
+                ) : previewPdfUrl ? (
+                  <iframe
+                    title="Preview PDF"
+                    src={previewPdfUrl}
+                    className="h-full w-full rounded-lg border bg-white"
+                    data-testid="preview-pdf-frame"
+                  />
                 ) : (
-                  previewPdfUrl ? (
-                    <iframe
-                      title="Preview PDF"
-                      src={previewPdfUrl}
-                      className="h-full w-full rounded-lg border bg-white"
-                      data-testid="preview-pdf-frame"
-                    />
-                  ) : (
-                    <Empty className="h-full rounded-lg border bg-muted/15" data-testid="preview-empty-pdf">
-                      <EmptyHeader>
-                        <EmptyMedia variant="icon">
-                          <FileText />
-                        </EmptyMedia>
-                        <EmptyTitle>No PDF preview yet</EmptyTitle>
-                        <EmptyDescription>Run preview to generate and open a PDF preview.</EmptyDescription>
-                      </EmptyHeader>
-                      <EmptyContent>
-                        <Button size="sm" onClick={runPreview} disabled={busy || !selectedTemplate}>
-                          <Eye data-icon="inline-start" />
-                          Preview
-                        </Button>
-                      </EmptyContent>
-                    </Empty>
-                  )
+                  <Empty
+                    className="h-full rounded-lg border bg-muted/15"
+                    data-testid="preview-empty-pdf"
+                  >
+                    <EmptyHeader>
+                      <EmptyMedia variant="icon">
+                        <FileText />
+                      </EmptyMedia>
+                      <EmptyTitle>No PDF preview yet</EmptyTitle>
+                      <EmptyDescription>
+                        Run preview to generate and open a PDF preview.
+                      </EmptyDescription>
+                    </EmptyHeader>
+                    <EmptyContent>
+                      <Button
+                        size="sm"
+                        onClick={runPreview}
+                        disabled={busy || !selectedTemplate}
+                      >
+                        <Eye data-icon="inline-start" />
+                        Preview
+                      </Button>
+                    </EmptyContent>
+                  </Empty>
                 )}
               </CardContent>
             </Card>
@@ -367,7 +559,7 @@ export default function App() {
             <div
               className={cn(
                 "absolute left-1/2 z-30 flex w-[min(44rem,calc(100%-2rem))] -translate-x-1/2 items-center gap-2 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700 shadow-sm",
-                panelOpen ? "bottom-[calc(60vh+4.5rem)] md:bottom-[calc(33vh+4.5rem)]" : "bottom-16"
+                errorPositionClass,
               )}
               data-testid="error-banner"
             >
@@ -377,88 +569,95 @@ export default function App() {
           ) : null}
         </main>
       </div>
+    )
+  }
+
+  return (
+    <div
+      className="relative flex h-screen flex-col overflow-hidden"
+      data-testid="dfactory-app"
+    >
+      <Topbar
+        selectedTemplate={selectedTemplate}
+        onPreview={runPreview}
+        onGenerate={runGenerate}
+        busy={busy}
+      />
+
+      <div className="min-h-0 flex-1 pb-14">
+        {isDesktop ? (
+          panelOpen ? (
+            <ResizablePanelGroup
+              id="workspace-resizable-group"
+              orientation="vertical"
+              className="[&:has([data-separator=active])_iframe]:pointer-events-none"
+              resizeTargetMinimumSize={{ coarse: 40, fine: 16 }}
+              onLayoutChanged={(layout) => {
+                const nextBottomSize = layout["inspector-panel"]
+                if (typeof nextBottomSize === "number") {
+                  setDesktopPanelSize(
+                    Math.min(70, Math.max(24, nextBottomSize)),
+                  )
+                }
+              }}
+            >
+              <ResizablePanel
+                id="workspace-panel"
+                defaultSize={`${workspacePanelSize}%`}
+                minSize="30%"
+              >
+                {renderWorkspace(false)}
+              </ResizablePanel>
+              <ResizableHandle
+                withHandle
+                className="bottom-panel-resize-handle bg-transparent"
+                data-testid="bottom-panel-resize-handle"
+              />
+              <ResizablePanel
+                id="inspector-panel"
+                defaultSize={`${clampedDesktopPanelSize}%`}
+                minSize="24%"
+                maxSize="70%"
+              >
+                <section
+                  id={`panel-${activePanel.id}`}
+                  role="tabpanel"
+                  aria-labelledby={`dock-tab-${activePanel.id}`}
+                  className="h-full border-t bg-background/95 shadow-[0_-20px_40px_-24px_hsl(var(--foreground)/0.4)] backdrop-blur-xl"
+                  data-testid="bottom-panel"
+                >
+                  {renderInspectorPanelContent()}
+                </section>
+              </ResizablePanel>
+            </ResizablePanelGroup>
+          ) : (
+            <div className="h-full">{renderWorkspace(false)}</div>
+          )
+        ) : (
+          <div className="h-full">{renderWorkspace(true)}</div>
+        )}
+      </div>
 
       <AnimatePresence>
-        {panelOpen ? (
+        {!isDesktop && panelOpen ? (
           <motion.section
             key="bottom-panel"
             id={`panel-${activePanel.id}`}
             role="tabpanel"
             aria-labelledby={`dock-tab-${activePanel.id}`}
-            className="absolute inset-x-0 bottom-14 z-30 h-[60vh] border-t bg-background/95 shadow-[0_-20px_40px_-24px_hsl(var(--foreground)/0.4)] backdrop-blur-xl md:h-[33vh]"
+            className="absolute inset-x-0 bottom-14 z-30 h-[60vh] border-t bg-background/95 shadow-[0_-20px_40px_-24px_hsl(var(--foreground)/0.4)] backdrop-blur-xl"
             data-testid="bottom-panel"
             initial={{ y: "100%", opacity: 0.4 }}
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: "100%", opacity: 0.4 }}
-            transition={{ type: "spring", stiffness: 320, damping: 34, mass: 0.85 }}
+            transition={{
+              type: "spring",
+              stiffness: 320,
+              damping: 34,
+              mass: 0.85,
+            }}
           >
-            <div className="flex h-full flex-col">
-              <div className="flex items-start justify-between gap-3 px-4 py-3">
-                <div className="flex flex-col gap-1">
-                  <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Inspector</p>
-                  <div className="flex items-center gap-2 text-sm font-semibold">
-                    <activePanel.icon className="h-4 w-4" />
-                    {activePanel.label}
-                  </div>
-                </div>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon-sm"
-                  onClick={() => setPanelOpen(false)}
-                  aria-label="Collapse bottom panel"
-                  data-testid="bottom-panel-collapse"
-                >
-                  <ChevronsDown className="h-4 w-4" />
-                </Button>
-              </div>
-              <Separator />
-
-              <div className="min-h-0 flex-1 p-4">
-                {activePanel.id === "payload" ? (
-                  <Textarea
-                    value={payloadText}
-                    onChange={(event) => setPayloadText(event.target.value)}
-                    className="h-full min-h-full font-mono text-xs"
-                    data-testid="payload-editor"
-                  />
-                ) : null}
-
-                {activePanel.id === "schema" ? (
-                  <ScrollArea className="h-full rounded-lg border bg-muted/30">
-                    <pre className="p-3 text-xs" data-testid="schema-view">
-                      {schemaJson}
-                    </pre>
-                  </ScrollArea>
-                ) : null}
-
-                {activePanel.id === "source" ? (
-                  <ScrollArea className="h-full rounded-lg border bg-muted/30">
-                    <pre className="p-3 text-xs" data-testid="source-view">
-                      {sourceCode}
-                    </pre>
-                  </ScrollArea>
-                ) : null}
-
-                {activePanel.id === "playground" ? (
-                  <ScrollArea className="h-full rounded-lg border bg-muted/30">
-                    <div className="flex flex-col gap-3 p-3 text-xs">
-                      <p>
-                        <strong>Preview:</strong> POST <code>/api/document/preview</code>
-                      </p>
-                      <p>
-                        <strong>Generate:</strong> POST <code>/api/document/generate</code>
-                      </p>
-                      <pre className="overflow-auto rounded-lg bg-background p-3" data-testid="playground-curl">
-{`curl -X POST ${import.meta.env.VITE_DFACTORY_API_URL ?? "http://127.0.0.1:3210/api"}/document/preview \\
-  -H 'content-type: application/json' \\
-  -d '{"templateId":"${selectedTemplate?.id ?? "invoice"}","payload":${payloadText},"mode":"${mode}"}'`}
-                      </pre>
-                    </div>
-                  </ScrollArea>
-                ) : null}
-              </div>
-            </div>
+            {renderInspectorPanelContent()}
           </motion.section>
         ) : null}
       </AnimatePresence>
@@ -475,7 +674,7 @@ export default function App() {
           data-testid="bottom-dock-tablist"
         >
           {panelTabs.map((tab) => {
-            const isActive = panelOpen && activePanelTab === tab.id;
+            const isActive = panelOpen && activePanelTab === tab.id
 
             return (
               <Button
@@ -495,10 +694,10 @@ export default function App() {
                 <tab.icon className="h-3.5 w-3.5" />
                 {tab.label}
               </Button>
-            );
+            )
           })}
         </div>
       </footer>
     </div>
-  );
+  )
 }

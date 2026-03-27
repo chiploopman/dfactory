@@ -14,7 +14,8 @@ const configSchema = z.object({
       compatibilityGlobEnabled: z.boolean().optional()
     })
     .optional(),
-  adapters: z.array(z.string()).optional(),
+  plugins: z.array(z.string()).optional(),
+  moduleLoader: z.string().optional(),
   auth: z
     .object({
       mode: z.literal("apiKey").optional(),
@@ -74,7 +75,8 @@ export async function loadDFactoryConfig(
           globs: [...DEFAULT_CONFIG.templates.globs],
           ignore: [...(DEFAULT_CONFIG.templates.ignore ?? [])]
         },
-        adapters: [...DEFAULT_CONFIG.adapters],
+        plugins: [...DEFAULT_CONFIG.plugins],
+        moduleLoader: DEFAULT_CONFIG.moduleLoader,
         auth: { ...DEFAULT_CONFIG.auth, apiKeys: [...(DEFAULT_CONFIG.auth.apiKeys ?? [])] },
         ui: { ...DEFAULT_CONFIG.ui },
         renderer: { ...DEFAULT_CONFIG.renderer }
@@ -101,7 +103,8 @@ export async function loadDFactoryConfig(
       compatibilityGlobEnabled:
         parsed.templates?.compatibilityGlobEnabled ?? DEFAULT_CONFIG.templates.compatibilityGlobEnabled
     },
-    adapters: parsed.adapters ?? [...DEFAULT_CONFIG.adapters],
+    plugins: parsed.plugins ?? [...DEFAULT_CONFIG.plugins],
+    moduleLoader: parsed.moduleLoader ?? DEFAULT_CONFIG.moduleLoader,
     auth: {
       mode: parsed.auth?.mode ?? DEFAULT_CONFIG.auth.mode,
       apiKeys: parsed.auth?.apiKeys ?? [...(DEFAULT_CONFIG.auth.apiKeys ?? [])],

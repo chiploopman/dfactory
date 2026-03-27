@@ -44,7 +44,8 @@ export interface DFactoryConfig {
     ignore?: string[];
     compatibilityGlobEnabled?: boolean;
   };
-  adapters: string[];
+  plugins: string[];
+  moduleLoader?: string;
   auth: {
     mode: "apiKey";
     apiKeys?: string[];
@@ -72,10 +73,54 @@ export interface TemplateAdapter {
   renderHtml: (context: RenderContext) => Promise<string>;
 }
 
+export interface DoctorCheckResult {
+  name: string;
+  ok: boolean;
+  message: string;
+}
+
+export interface ModuleTransformAlias {
+  find: string | RegExp;
+  replacement: string;
+}
+
+export interface ModuleTransformConfig {
+  aliases?: ModuleTransformAlias[];
+  vitePlugins?: unknown[];
+}
+
+export interface DFactoryFrameworkPlugin {
+  id: string;
+  framework: string;
+  createAdapter: () => Promise<TemplateAdapter> | TemplateAdapter;
+  requiresModuleTransforms?: boolean;
+  createModuleTransformConfig?: () => Promise<ModuleTransformConfig> | ModuleTransformConfig;
+  doctorChecks?: (context: { cwd: string; config: DFactoryConfig }) => Promise<DoctorCheckResult[]> | DoctorCheckResult[];
+}
+
+export interface TemplateModuleLoader {
+  id: string;
+  load(filePath: string): Promise<unknown>;
+  close(): Promise<void>;
+}
+
+export interface DFactoryModuleLoaderFactory {
+  id: string;
+  supportsModuleTransforms: boolean;
+  create: (options: { cwd: string; config: DFactoryConfig; plugins: DFactoryFrameworkPlugin[] }) => Promise<TemplateModuleLoader> | TemplateModuleLoader;
+}
+
+export interface RegistryRuntimeInfo {
+  pluginIds: string[];
+  frameworks: string[];
+  moduleLoader: string;
+}
+
 export interface RegistryOptions {
   cwd: string;
   configPath?: string;
-  adapters?: TemplateAdapter[];
+  plugins?: DFactoryFrameworkPlugin[];
+  moduleLoaderFactory?: DFactoryModuleLoaderFactory;
 }
 
 export interface RenderDiagnostics {
