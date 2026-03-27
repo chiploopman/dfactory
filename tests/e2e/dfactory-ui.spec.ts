@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-test("dev mode: catalog, payload edit, html/pdf preview, generate, tabs visible", async ({ page }) => {
+test("dev mode: catalog, payload edit, html/pdf preview, generate, dock panel behavior", async ({ page }) => {
   await page.goto("/");
 
   await expect(page.getByTestId("dfactory-app")).toBeVisible();
@@ -63,13 +63,22 @@ test("dev mode: catalog, payload edit, html/pdf preview, generate, tabs visible"
   expect(generateResponse.ok()).toBeTruthy();
   expect(generateResponse.headers()["content-type"]).toContain("application/pdf");
 
-  await page.getByRole("tab", { name: "Schema" }).click();
+  await expect(page.getByTestId("bottom-dock")).toBeVisible();
+  await expect(page.getByTestId("bottom-panel")).toHaveCount(0);
+
+  await page.getByTestId("dock-tab-schema").click();
+  await expect(page.getByTestId("bottom-panel")).toBeVisible();
   await expect(page.getByTestId("schema-view")).toContainText("invoiceNumber");
 
-  await page.getByRole("tab", { name: "Source" }).click();
+  await page.getByTestId("dock-tab-schema").click();
+  await expect(page.getByTestId("bottom-panel")).toHaveCount(0);
+
+  await page.getByTestId("dock-tab-source").click();
+  await expect(page.getByTestId("bottom-panel")).toBeVisible();
   await expect(page.getByTestId("source-view")).toContainText("export const meta");
 
-  await page.getByRole("tab", { name: "API Playground" }).click();
+  await page.getByTestId("dock-tab-playground").click();
+  await expect(page.getByTestId("bottom-panel")).toBeVisible();
   await expect(page.getByTestId("playground-curl")).toContainText("/document/preview");
 });
 
@@ -78,7 +87,12 @@ test("prod mode: source and playground tabs are hidden by default", async ({ pag
 
   await expect(page.getByTestId("dfactory-app")).toBeVisible();
   await expect(page.locator("[data-template-id='invoice']")).toBeVisible();
-  await expect(page.getByRole("tab", { name: "Schema" })).toBeVisible();
-  await expect(page.getByRole("tab", { name: "Source" })).toHaveCount(0);
-  await expect(page.getByRole("tab", { name: "API Playground" })).toHaveCount(0);
+  await expect(page.getByTestId("bottom-dock")).toBeVisible();
+  await expect(page.getByTestId("dock-tab-schema")).toBeVisible();
+  await expect(page.getByTestId("dock-tab-source")).toHaveCount(0);
+  await expect(page.getByTestId("dock-tab-playground")).toHaveCount(0);
+
+  await page.getByTestId("dock-tab-schema").click();
+  await expect(page.getByTestId("bottom-panel")).toBeVisible();
+  await expect(page.getByTestId("schema-view")).toContainText("invoiceNumber");
 });
