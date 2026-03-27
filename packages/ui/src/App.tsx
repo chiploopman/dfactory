@@ -1,13 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { AlertCircle, ChevronsDown, Code2, FileJson2, PlayCircle, TerminalSquare } from "lucide-react";
+import { AlertCircle, Braces, ChevronsDown, Code2, Eye, FileJson2, FileText, PlayCircle, TerminalSquare } from "lucide-react";
 
 import { TemplateCatalog } from "@/components/template-catalog";
 import { Topbar } from "@/components/topbar";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import {
   fetchRuntime,
@@ -31,7 +33,7 @@ const DEFAULT_PAYLOAD = {
   ]
 };
 
-type PanelTab = "schema" | "source" | "playground";
+type PanelTab = "payload" | "schema" | "source" | "playground";
 
 interface PanelTabItem {
   id: PanelTab;
@@ -48,7 +50,7 @@ export default function App() {
   const [selectedId, setSelectedId] = useState<string>();
   const [schemaJson, setSchemaJson] = useState<string>("{}");
   const [sourceCode, setSourceCode] = useState<string>("// Source unavailable");
-  const [previewHtml, setPreviewHtml] = useState<string>("<p>Run preview to see output.</p>");
+  const [previewHtml, setPreviewHtml] = useState<string>();
   const [previewPdfUrl, setPreviewPdfUrl] = useState<string>();
   const [payloadText, setPayloadText] = useState<string>(pretty(DEFAULT_PAYLOAD));
   const [runtime, setRuntime] = useState<RuntimeConfig>();
@@ -58,7 +60,7 @@ export default function App() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
   const [panelOpen, setPanelOpen] = useState(false);
-  const [activePanelTab, setActivePanelTab] = useState<PanelTab>("schema");
+  const [activePanelTab, setActivePanelTab] = useState<PanelTab>("payload");
 
   const selectedTemplate = useMemo(
     () => templates.find((template) => template.id === selectedId),
@@ -69,7 +71,10 @@ export default function App() {
   const playgroundEnabled = runtime ? !runtime.isProduction || runtime.ui.playgroundInProd : true;
 
   const panelTabs = useMemo<PanelTabItem[]>(() => {
-    const tabs: PanelTabItem[] = [{ id: "schema", label: "Schema", icon: FileJson2 }];
+    const tabs: PanelTabItem[] = [
+      { id: "payload", label: "Payload", icon: Braces },
+      { id: "schema", label: "Schema", icon: FileJson2 }
+    ];
 
     if (sourceEnabled) {
       tabs.push({ id: "source", label: "Source", icon: Code2 });
@@ -131,7 +136,7 @@ export default function App() {
 
   useEffect(() => {
     if (!panelTabs.some((tab) => tab.id === activePanelTab)) {
-      setActivePanelTab("schema");
+      setActivePanelTab(panelTabs[0]?.id ?? "payload");
     }
   }, [panelTabs, activePanelTab]);
 
@@ -261,11 +266,8 @@ export default function App() {
     <div className="relative flex h-screen flex-col overflow-hidden" data-testid="dfactory-app">
       <Topbar
         selectedTemplate={selectedTemplate}
-        mode={mode}
-        onModeChange={setMode}
         onPreview={runPreview}
         onGenerate={runGenerate}
-        onRefreshTemplates={loadTemplates}
         busy={busy}
       />
 
@@ -279,46 +281,84 @@ export default function App() {
         />
 
         <main className="relative min-h-0 flex-1 p-4">
-          <div className="grid h-full min-h-0 gap-4 lg:grid-cols-[1.1fr_0.9fr]">
-            <Card className="min-h-0 overflow-hidden">
+          <div className="h-full min-h-0">
+            <Card className="h-full min-h-0 overflow-hidden">
               <CardHeader className="pb-3">
                 <CardTitle className="flex items-center gap-2 text-sm">
                   <PlayCircle className="h-4 w-4" />
                   Live Preview
                 </CardTitle>
                 <CardDescription>{status}</CardDescription>
+                <CardAction>
+                  <Tabs
+                    value={mode}
+                    onValueChange={(nextValue) => setMode(nextValue as RenderMode)}
+                    className="gap-0"
+                    data-testid="preview-mode-tabs"
+                  >
+                    <TabsList>
+                      <TabsTrigger value="html" data-testid="preview-mode-html">
+                        HTML
+                      </TabsTrigger>
+                      <TabsTrigger value="pdf" data-testid="preview-mode-pdf">
+                        PDF
+                      </TabsTrigger>
+                    </TabsList>
+                  </Tabs>
+                </CardAction>
               </CardHeader>
               <CardContent className="min-h-0 h-[calc(100%-78px)]">
                 {mode === "html" ? (
-                  <iframe
-                    title="Preview HTML"
-                    srcDoc={previewHtml}
-                    className="h-full w-full rounded-lg border bg-white"
-                    data-testid="preview-frame"
-                  />
+                  previewHtml ? (
+                    <iframe
+                      title="Preview HTML"
+                      srcDoc={previewHtml}
+                      className="h-full w-full rounded-lg border bg-white"
+                      data-testid="preview-frame"
+                    />
+                  ) : (
+                    <Empty className="h-full rounded-lg border bg-muted/15" data-testid="preview-empty-html">
+                      <EmptyHeader>
+                        <EmptyMedia variant="icon">
+                          <Code2 />
+                        </EmptyMedia>
+                        <EmptyTitle>No HTML preview yet</EmptyTitle>
+                        <EmptyDescription>Run preview to render this template as HTML.</EmptyDescription>
+                      </EmptyHeader>
+                      <EmptyContent>
+                        <Button size="sm" onClick={runPreview} disabled={busy || !selectedTemplate}>
+                          <Eye data-icon="inline-start" />
+                          Preview
+                        </Button>
+                      </EmptyContent>
+                    </Empty>
+                  )
                 ) : (
-                  <iframe
-                    title="Preview PDF"
-                    src={previewPdfUrl}
-                    className="h-full w-full rounded-lg border bg-white"
-                    data-testid="preview-pdf-frame"
-                  />
+                  previewPdfUrl ? (
+                    <iframe
+                      title="Preview PDF"
+                      src={previewPdfUrl}
+                      className="h-full w-full rounded-lg border bg-white"
+                      data-testid="preview-pdf-frame"
+                    />
+                  ) : (
+                    <Empty className="h-full rounded-lg border bg-muted/15" data-testid="preview-empty-pdf">
+                      <EmptyHeader>
+                        <EmptyMedia variant="icon">
+                          <FileText />
+                        </EmptyMedia>
+                        <EmptyTitle>No PDF preview yet</EmptyTitle>
+                        <EmptyDescription>Run preview to generate and open a PDF preview.</EmptyDescription>
+                      </EmptyHeader>
+                      <EmptyContent>
+                        <Button size="sm" onClick={runPreview} disabled={busy || !selectedTemplate}>
+                          <Eye data-icon="inline-start" />
+                          Preview
+                        </Button>
+                      </EmptyContent>
+                    </Empty>
+                  )
                 )}
-              </CardContent>
-            </Card>
-
-            <Card className="min-h-0 overflow-hidden">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm">Payload</CardTitle>
-                <CardDescription>Schema-aware payload editor</CardDescription>
-              </CardHeader>
-              <CardContent className="h-[calc(100%-78px)]">
-                <Textarea
-                  value={payloadText}
-                  onChange={(event) => setPayloadText(event.target.value)}
-                  className="h-full min-h-full font-mono text-xs"
-                  data-testid="payload-editor"
-                />
               </CardContent>
             </Card>
           </div>
@@ -375,6 +415,15 @@ export default function App() {
               <Separator />
 
               <div className="min-h-0 flex-1 p-4">
+                {activePanel.id === "payload" ? (
+                  <Textarea
+                    value={payloadText}
+                    onChange={(event) => setPayloadText(event.target.value)}
+                    className="h-full min-h-full font-mono text-xs"
+                    data-testid="payload-editor"
+                  />
+                ) : null}
+
                 {activePanel.id === "schema" ? (
                   <ScrollArea className="h-full rounded-lg border bg-muted/30">
                     <pre className="p-3 text-xs" data-testid="schema-view">

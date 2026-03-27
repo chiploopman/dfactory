@@ -6,7 +6,12 @@ test("dev mode: catalog, payload edit, html/pdf preview, generate, dock panel be
   await expect(page.getByTestId("dfactory-app")).toBeVisible();
   await expect(page.locator("[data-template-id='invoice']")).toBeVisible();
   await page.locator("[data-template-id='invoice']").click();
-  await expect(page.getByRole("button", { name: "Preview" })).toBeEnabled();
+  await expect(page.getByTestId("topbar-preview-button")).toBeEnabled();
+  await expect(page.getByTestId("bottom-dock")).toBeVisible();
+
+  await page.getByTestId("dock-tab-payload").click();
+  await expect(page.getByTestId("bottom-panel")).toBeVisible();
+  await expect(page.getByTestId("payload-editor")).toBeVisible();
 
   await page.getByTestId("payload-editor").fill(
     JSON.stringify(
@@ -23,12 +28,14 @@ test("dev mode: catalog, payload edit, html/pdf preview, generate, dock panel be
       2
     )
   );
+  await page.getByTestId("dock-tab-payload").click();
+  await expect(page.getByTestId("bottom-panel")).toHaveCount(0);
 
   const [htmlPreviewResponse] = await Promise.all([
     page.waitForResponse((response) => {
       return response.url().includes("/api/document/preview") && response.request().method() === "POST";
     }),
-    page.getByRole("button", { name: "Preview" }).click()
+    page.getByTestId("topbar-preview-button").click()
   ]);
 
   const htmlPreviewBody = (await htmlPreviewResponse.json()) as { mode: string };
@@ -41,12 +48,12 @@ test("dev mode: catalog, payload edit, html/pdf preview, generate, dock panel be
   expect(htmlPreviewRequest.payload.invoiceNumber).toBe("INV-2026");
   await expect(page.getByTestId("preview-frame")).toBeVisible();
 
-  await page.getByRole("button", { name: "PDF" }).click();
+  await page.getByRole("tab", { name: "PDF" }).click();
   const [pdfPreviewResponse] = await Promise.all([
     page.waitForResponse((response) => {
       return response.url().includes("/api/document/preview") && response.request().method() === "POST";
     }),
-    page.getByRole("button", { name: "Preview" }).click()
+    page.getByTestId("topbar-preview-button").click()
   ]);
 
   expect(pdfPreviewResponse.ok()).toBeTruthy();
@@ -57,7 +64,7 @@ test("dev mode: catalog, payload edit, html/pdf preview, generate, dock panel be
     page.waitForResponse((response) => {
       return response.url().includes("/api/document/generate") && response.request().method() === "POST";
     }),
-    page.getByRole("button", { name: "Generate" }).click()
+    page.getByTestId("topbar-generate-button").click()
   ]);
 
   expect(generateResponse.ok()).toBeTruthy();
@@ -101,6 +108,7 @@ test("prod mode: source and playground tabs are hidden by default", async ({ pag
   await expect(page.getByTestId("dfactory-app")).toBeVisible();
   await expect(page.locator("[data-template-id='invoice']")).toBeVisible();
   await expect(page.getByTestId("bottom-dock")).toBeVisible();
+  await expect(page.getByTestId("dock-tab-payload")).toBeVisible();
   await expect(page.getByTestId("dock-tab-schema")).toBeVisible();
   await expect(page.getByTestId("dock-tab-source")).toHaveCount(0);
   await expect(page.getByTestId("dock-tab-playground")).toHaveCount(0);
