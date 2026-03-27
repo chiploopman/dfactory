@@ -1,0 +1,46 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: 30 40% 98%;
+  --foreground: 24 35% 12%;
+  --card: 0 0% 100%;
+  --card-foreground: 24 35% 12%;
+  --primary: 18 88% 45%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 37 70% 92%;
+  --secondary-foreground: 24 35% 18%;
+  --muted: 35 42% 93%;
+  --muted-foreground: 24 16% 38%;
+  --accent: 142 31% 90%;
+  --accent-foreground: 142 45% 20%;
+  --border: 28 28% 84%;
+  --input: 28 28% 84%;
+  --ring: 18 88% 45%;
+  --radius: 0.75rem;
+}
+
+* {
+  @apply border-border;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  font-family: "Instrument Sans", ui-sans-serif, system-ui, sans-serif;
+  @apply bg-background text-foreground antialiased;
+  background-image:
+    radial-gradient(circle at 8% 10%, rgba(255, 179, 102, 0.24), transparent 35%),
+    radial-gradient(circle at 92% 90%, rgba(103, 207, 144, 0.16), transparent 40%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.9), rgba(255, 250, 244, 0.95));
+}
+
+#root {
+  min-height: 100vh;
+}
+
+pre {
+  white-space: pre-wrap;
+  word-break: break-word;
+}

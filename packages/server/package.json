@@ -1,0 +1,39 @@
+{
+  "name": "@dfactory/server",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup src/index.ts --format esm --dts",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "eslint src --ext .ts",
+    "test": "vitest run --passWithNoTests",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@dfactory/adapter-react": "workspace:*",
+    "@dfactory/core": "workspace:*",
+    "@dfactory/renderer-playwright": "workspace:*",
+    "@fastify/cors": "^11.1.0",
+    "@fastify/static": "^8.2.0",
+    "@fastify/swagger": "^9.5.2",
+    "@fastify/swagger-ui": "^5.2.3",
+    "fastify": "^5.6.0",
+    "chokidar": "^4.0.3",
+    "zod": "^4.1.11",
+    "bundle-require": "^5.1.0"
+  },
+  "devDependencies": {
+    "tsup": "^8.3.5"
+  }
+}

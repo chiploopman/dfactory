@@ -1,0 +1,31 @@
+{
+  "name": "@dfactory/core",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup src/index.ts --format esm --dts",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "eslint src --ext .ts",
+    "test": "vitest run --passWithNoTests",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "bundle-require": "^5.1.0",
+    "fast-glob": "^3.3.3",
+    "zod": "^4.1.11"
+  },
+  "devDependencies": {
+    "tsup": "^8.3.5"
+  }
+}

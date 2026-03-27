@@ -1,0 +1,42 @@
+{
+  "name": "@dfactory/cli",
+  "version": "0.1.0",
+  "type": "module",
+  "bin": {
+    "dfactory": "dist/index.js"
+  },
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup src/index.ts --format esm --dts",
+    "dev": "tsx src/index.ts dev",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "eslint src --ext .ts",
+    "test": "vitest run --passWithNoTests",
+    "clean": "rm -rf dist",
+    "serve": "tsx src/index.ts serve",
+    "index": "tsx src/index.ts index",
+    "doctor": "tsx src/index.ts doctor"
+  },
+  "dependencies": {
+    "@dfactory/core": "workspace:*",
+    "@dfactory/server": "workspace:*",
+    "@dfactory/ui": "workspace:*",
+    "commander": "^14.0.1",
+    "playwright": "^1.54.2",
+    "vite": "^7.1.6"
+  },
+  "devDependencies": {
+    "tsup": "^8.3.5",
+    "tsx": "^4.20.5"
+  }
+}

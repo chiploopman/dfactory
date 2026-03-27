@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: dfactory
+  labels:
+    app: dfactory
+spec:
+  selector:
+    app: dfactory
+  ports:
+    - name: http
+      protocol: TCP
+      port: 80
+      targetPort: 3210
+  type: ClusterIP

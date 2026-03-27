@@ -1,0 +1,49 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dfactory
+  labels:
+    app: dfactory
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: dfactory
+  template:
+    metadata:
+      labels:
+        app: dfactory
+    spec:
+      containers:
+        - name: dfactory
+          image: ghcr.io/your-org/dfactory:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 3210
+          env:
+            - name: NODE_ENV
+              value: "production"
+            - name: DFACTORY_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: dfactory-secret
+                  key: apiKey
+          readinessProbe:
+            httpGet:
+              path: /api/ready
+              port: 3210
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: 3210
+            initialDelaySeconds: 10
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
+            limits:
+              cpu: "1"
+              memory: 1Gi
