@@ -19,7 +19,6 @@ import {
   Card,
   CardAction,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
@@ -50,6 +49,7 @@ import {
   type RenderMode,
 } from "@/lib/api"
 import { cn } from "@/lib/utils"
+import { toast } from "sonner"
 import type {
   PreviewHtmlResponse,
   RuntimeConfig,
@@ -91,7 +91,6 @@ export default function App() {
   const [runtime, setRuntime] = useState<RuntimeConfig>()
   const [query, setQuery] = useState("")
   const [mode, setMode] = useState<RenderMode>("html")
-  const [status, setStatus] = useState<string>("Ready")
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string>()
   const [panelOpen, setPanelOpen] = useState(true)
@@ -280,8 +279,8 @@ export default function App() {
       if (mode === "html") {
         const body = response as PreviewHtmlResponse
         setPreviewHtml(body.html)
-        setStatus(
-          `Preview rendered in ${Math.round(body.diagnostics.renderMs ?? 0)}ms`,
+        toast.success(
+          `HTML preview rendered in ${Math.round(body.diagnostics.renderMs ?? 0)}ms`,
         )
         if (previewPdfUrl) {
           URL.revokeObjectURL(previewPdfUrl)
@@ -294,15 +293,12 @@ export default function App() {
         }
         const url = URL.createObjectURL(blob)
         setPreviewPdfUrl(url)
-        setStatus("PDF preview generated")
+        toast.success("PDF preview generated")
       }
     } catch (previewError) {
-      setError(
-        previewError instanceof Error
-          ? previewError.message
-          : "Preview failed.",
-      )
-      setStatus("Preview failed")
+      const message =
+        previewError instanceof Error ? previewError.message : "Preview failed."
+      toast.error(message)
     } finally {
       setBusy(false)
     }
@@ -332,19 +328,16 @@ export default function App() {
         anchor.download = `${selectedTemplate.id}.pdf`
         anchor.click()
         URL.revokeObjectURL(url)
+        toast.success("PDF generated")
       } else {
         const body = response as { html: string }
         setPreviewHtml(body.html)
+        toast.success("HTML generated and loaded in preview")
       }
-
-      setStatus(`Generate completed (${mode.toUpperCase()})`)
     } catch (generationError) {
-      setError(
-        generationError instanceof Error
-          ? generationError.message
-          : "Generate failed.",
-      )
-      setStatus("Generate failed")
+      const message =
+        generationError instanceof Error ? generationError.message : "Generate failed."
+      toast.error(message)
     } finally {
       setBusy(false)
     }
@@ -462,7 +455,6 @@ export default function App() {
                   <PlayCircle className="h-4 w-4" />
                   Live Preview
                 </CardTitle>
-                <CardDescription>{status}</CardDescription>
                 <CardAction>
                   <Tabs
                     value={mode}
@@ -623,7 +615,7 @@ export default function App() {
                   id={`panel-${activePanel.id}`}
                   role="tabpanel"
                   aria-labelledby={`dock-tab-${activePanel.id}`}
-                  className="h-full border-t bg-background/95 shadow-[0_-20px_40px_-24px_hsl(var(--foreground)/0.4)] backdrop-blur-xl"
+                  className="h-full border-t border-border/90 bg-muted/70 shadow-[0_-18px_36px_-24px_hsl(var(--foreground)/0.45)] backdrop-blur-lg supports-[backdrop-filter]:bg-muted/65"
                   data-testid="bottom-panel"
                 >
                   {renderInspectorPanelContent()}
@@ -645,7 +637,7 @@ export default function App() {
             id={`panel-${activePanel.id}`}
             role="tabpanel"
             aria-labelledby={`dock-tab-${activePanel.id}`}
-            className="absolute inset-x-0 bottom-14 z-30 h-[60vh] border-t bg-background/95 shadow-[0_-20px_40px_-24px_hsl(var(--foreground)/0.4)] backdrop-blur-xl"
+            className="absolute inset-x-0 bottom-14 z-30 h-[60vh] border-t border-border/90 bg-muted/85 shadow-[0_-18px_36px_-24px_hsl(var(--foreground)/0.45)] backdrop-blur-lg supports-[backdrop-filter]:bg-muted/75"
             data-testid="bottom-panel"
             initial={{ y: "100%", opacity: 0.4 }}
             animate={{ y: 0, opacity: 1 }}
@@ -663,7 +655,7 @@ export default function App() {
       </AnimatePresence>
 
       <footer
-        className="absolute inset-x-0 bottom-0 z-40 border-t bg-card/90 backdrop-blur-md supports-[backdrop-filter]:bg-card/75"
+        className="absolute inset-x-0 bottom-0 z-40 border-t border-border/90 bg-muted/95 shadow-[0_-8px_20px_-16px_hsl(var(--foreground)/0.35)] backdrop-blur-md supports-[backdrop-filter]:bg-muted/85"
         data-testid="bottom-dock"
         data-sticky="true"
       >

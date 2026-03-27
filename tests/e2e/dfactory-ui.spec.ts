@@ -79,6 +79,30 @@ test("dev mode: catalog, payload edit, html/pdf preview, generate, dock panel be
   await expect(page.getByTestId("bottom-dock")).toHaveAttribute("data-sticky", "true");
   await expect(page.getByTestId("bottom-panel")).toBeVisible();
 
+  const panelBackground = await page.getByTestId("bottom-panel").evaluate((element) => {
+    return getComputedStyle(element).backgroundColor;
+  });
+  const workspaceBackground = await page
+    .locator("main [data-slot='card']")
+    .first()
+    .evaluate((element) => {
+      return getComputedStyle(element).backgroundColor;
+    });
+  expect(panelBackground).not.toBe("rgba(0, 0, 0, 0)");
+  expect(panelBackground).not.toBe(workspaceBackground);
+
+  const panelClassName = await page.getByTestId("bottom-panel").evaluate((element) => {
+    return element.className;
+  });
+  expect(panelClassName).toContain("border-t");
+  expect(panelClassName).toContain("shadow-[0_-18px_36px_-24px_hsl(var(--foreground)/0.45)]");
+
+  const dockClassName = await page.getByTestId("bottom-dock").evaluate((element) => {
+    return element.className;
+  });
+  expect(dockClassName).toContain("border-t");
+  expect(dockClassName).toContain("shadow-[0_-8px_20px_-16px_hsl(var(--foreground)/0.35)]");
+
   const viewport = page.viewportSize();
   const dockBounds = await page.getByTestId("bottom-dock").boundingBox();
   expect(viewport).toBeTruthy();
