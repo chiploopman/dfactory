@@ -38,6 +38,7 @@ import {
 } from "@/components/ui/resizable"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Separator } from "@/components/ui/separator"
+import { Spinner } from "@/components/ui/spinner"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
   fetchRuntime,
@@ -95,7 +96,9 @@ export default function App() {
   const [runtime, setRuntime] = useState<RuntimeConfig>()
   const [query, setQuery] = useState("")
   const [mode, setMode] = useState<RenderMode>("html")
-  const [busy, setBusy] = useState(false)
+  const [busyAction, setBusyAction] = useState<"preview" | "generate" | null>(
+    null,
+  )
   const [error, setError] = useState<string>()
   const [panelOpen, setPanelOpen] = useState(true)
   const [activePanelTab, setActivePanelTab] = useState<PanelTab>("payload")
@@ -118,6 +121,9 @@ export default function App() {
   const playgroundEnabled = runtime
     ? !runtime.isProduction || runtime.ui.playgroundInProd
     : true
+  const busy = busyAction !== null
+  const previewBusy = busyAction === "preview"
+  const generateBusy = busyAction === "generate"
 
   const panelTabs = useMemo<PanelTabItem[]>(() => {
     const tabs: PanelTabItem[] = [
@@ -273,11 +279,11 @@ export default function App() {
   }
 
   async function runPreview() {
-    if (!selectedTemplate) {
+    if (!selectedTemplate || busyAction) {
       return
     }
 
-    setBusy(true)
+    setBusyAction("preview")
     setError(undefined)
 
     try {
@@ -331,16 +337,16 @@ export default function App() {
         previewError instanceof Error ? previewError.message : "Preview failed."
       toast.error(message)
     } finally {
-      setBusy(false)
+      setBusyAction(null)
     }
   }
 
   async function runGenerate() {
-    if (!selectedTemplate) {
+    if (!selectedTemplate || busyAction) {
       return
     }
 
-    setBusy(true)
+    setBusyAction("generate")
     setError(undefined)
 
     try {
@@ -382,7 +388,7 @@ export default function App() {
         generationError instanceof Error ? generationError.message : "Generate failed."
       toast.error(message)
     } finally {
-      setBusy(false)
+      setBusyAction(null)
     }
   }
 
@@ -561,8 +567,12 @@ export default function App() {
                           onClick={runPreview}
                           disabled={busy || !selectedTemplate}
                         >
-                          <Eye data-icon="inline-start" />
-                          Preview
+                          {previewBusy ? (
+                            <Spinner data-icon="inline-start" />
+                          ) : (
+                            <Eye data-icon="inline-start" />
+                          )}
+                          {previewBusy ? "Previewing..." : "Preview"}
                         </Button>
                       </EmptyContent>
                     </Empty>
@@ -594,8 +604,12 @@ export default function App() {
                         onClick={runPreview}
                         disabled={busy || !selectedTemplate}
                       >
-                        <Eye data-icon="inline-start" />
-                        Preview
+                        {previewBusy ? (
+                          <Spinner data-icon="inline-start" />
+                        ) : (
+                          <Eye data-icon="inline-start" />
+                        )}
+                        {previewBusy ? "Previewing..." : "Preview"}
                       </Button>
                     </EmptyContent>
                   </Empty>
@@ -631,6 +645,8 @@ export default function App() {
         onPreview={runPreview}
         onGenerate={runGenerate}
         busy={busy}
+        previewBusy={previewBusy}
+        generateBusy={generateBusy}
       />
 
       <div className="min-h-0 flex-1 pb-14">
