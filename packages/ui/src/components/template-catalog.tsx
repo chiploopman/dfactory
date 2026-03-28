@@ -3,6 +3,12 @@ import { FileText, Search } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { getFrameworkIconMeta } from "@/lib/icon-mapper";
 import { cn } from "@/lib/utils";
 import type { TemplateSummary } from "@/types/api";
 
@@ -66,9 +72,7 @@ export function TemplateCatalog({
             >
               <div className="mb-2 flex items-center justify-between gap-2">
                 <p className="line-clamp-1 text-sm font-semibold">{template.meta.title}</p>
-                <Badge variant="secondary" className="capitalize">
-                  {template.framework}
-                </Badge>
+                <TemplateFrameworkBadge framework={template.framework} />
               </div>
 
               <p className="line-clamp-2 text-xs text-muted-foreground">
@@ -90,5 +94,31 @@ export function TemplateCatalog({
         </div>
       </ScrollArea>
     </aside>
+  );
+}
+
+function TemplateFrameworkBadge({ framework }: { framework: string }) {
+  const iconMeta = getFrameworkIconMeta(framework);
+  const FrameworkIcon = iconMeta.Icon;
+
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Badge
+          variant="secondary"
+          className="px-1.5 [&_svg]:size-3.5 [&_svg]:shrink-0"
+          data-testid="template-framework-badge"
+          data-framework={framework}
+          data-icon-kind={iconMeta.kind}
+          aria-label={iconMeta.label}
+        >
+          <FrameworkIcon aria-hidden="true" />
+          <span className="sr-only">{iconMeta.label}</span>
+        </Badge>
+      </TooltipTrigger>
+      <TooltipContent side="top">
+        <span>{iconMeta.label}</span>
+      </TooltipContent>
+    </Tooltip>
   );
 }

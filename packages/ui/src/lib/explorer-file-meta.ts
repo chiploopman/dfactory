@@ -1,9 +1,9 @@
-function normalizePath(path: string): string {
+export function normalizeFilePath(path: string): string {
   return path.replaceAll("\\", "/")
 }
 
 export function getFileName(path: string): string {
-  const normalized = normalizePath(path)
+  const normalized = normalizeFilePath(path)
   const segments = normalized.split("/").filter((segment) => segment.length > 0)
   return segments.at(-1) ?? normalized
 }

@@ -31,6 +31,15 @@ test("dev mode: catalog, payload edit, html/pdf preview, generate, dock panel be
   await expect(page.getByTestId("dfactory-app")).toBeVisible();
   await expect(page.locator("[data-template-id='invoice']")).toBeVisible();
   await page.locator("[data-template-id='invoice']").click();
+  const frameworkBadge = page
+    .locator("[data-template-id='invoice'] [data-testid='template-framework-badge']")
+    .first();
+  await expect(frameworkBadge).toBeVisible();
+  if (testInfo.project.name.startsWith("vue-")) {
+    await expect(frameworkBadge).toHaveAttribute("data-icon-kind", "vue");
+  } else {
+    await expect(frameworkBadge).toHaveAttribute("data-icon-kind", "react");
+  }
   await expect(page.getByTestId("topbar-preview-button")).toBeEnabled();
   await expect(page.getByTestId("bottom-dock")).toBeVisible();
   await expect(page.getByTestId("bottom-panel")).toBeVisible();
@@ -254,6 +263,44 @@ test("dev mode: catalog, payload edit, html/pdf preview, generate, dock panel be
   expect(sourceExplorerClassName).toContain("overflow-hidden");
   await expect(page.getByTestId("source-explorer-list")).toBeVisible();
   await expect(page.getByTestId("source-explorer-file").first()).toBeVisible();
+  const sourceResizeHandle = page.locator(".source-explorer-resize-handle").first();
+  await expect(sourceResizeHandle).toBeVisible();
+  const sourceNavBefore = await page.getByTestId("source-explorer-nav").boundingBox();
+  const sourceHandleBounds = await sourceResizeHandle.boundingBox();
+  const sourceExplorerBounds = await page.getByTestId("source-explorer").boundingBox();
+  expect(sourceNavBefore).toBeTruthy();
+  expect(sourceHandleBounds).toBeTruthy();
+  expect(sourceExplorerBounds).toBeTruthy();
+  const initialSourceNavRatio =
+    (sourceNavBefore?.width ?? 0) / (sourceExplorerBounds?.width ?? 1);
+  expect(initialSourceNavRatio).toBeGreaterThan(0.17);
+  expect(initialSourceNavRatio).toBeLessThanOrEqual(0.42);
+  const sourceHandleCenterX = (sourceHandleBounds?.x ?? 0) + (sourceHandleBounds?.width ?? 0) / 2;
+  const sourceHandleCenterY = (sourceHandleBounds?.y ?? 0) + (sourceHandleBounds?.height ?? 0) / 2;
+  await page.mouse.move(sourceHandleCenterX, sourceHandleCenterY);
+  await page.mouse.down();
+  await page.mouse.move(sourceHandleCenterX + 180, sourceHandleCenterY, { steps: 16 });
+  await page.mouse.up();
+  const sourceNavAfter = await page.getByTestId("source-explorer-nav").boundingBox();
+  expect(sourceNavAfter).toBeTruthy();
+  const sourceResizeDelta = Math.abs((sourceNavAfter?.width ?? 0) - (sourceNavBefore?.width ?? 0));
+  expect(sourceResizeDelta).toBeGreaterThan(6);
+  expect((sourceNavAfter?.width ?? 0)).toBeLessThanOrEqual((sourceExplorerBounds?.width ?? 0) * 0.42);
+  const sourceHandleAfterBounds = await sourceResizeHandle.boundingBox();
+  expect(sourceHandleAfterBounds).toBeTruthy();
+  const sourceHandleAfterCenterX =
+    (sourceHandleAfterBounds?.x ?? 0) + (sourceHandleAfterBounds?.width ?? 0) / 2;
+  const sourceHandleAfterCenterY =
+    (sourceHandleAfterBounds?.y ?? 0) + (sourceHandleAfterBounds?.height ?? 0) / 2;
+  await page.mouse.move(sourceHandleAfterCenterX, sourceHandleAfterCenterY);
+  await page.mouse.down();
+  await page.mouse.move((sourceExplorerBounds?.x ?? 0) + (sourceExplorerBounds?.width ?? 0) + 200, sourceHandleAfterCenterY, {
+    steps: 24,
+  });
+  await page.mouse.up();
+  const sourceNavAtMax = await page.getByTestId("source-explorer-nav").boundingBox();
+  expect(sourceNavAtMax).toBeTruthy();
+  expect((sourceNavAtMax?.width ?? 0)).toBeLessThanOrEqual((sourceExplorerBounds?.width ?? 0) * 0.42);
   const sourceExplorerBackground = await page.getByTestId("source-explorer").evaluate((element) => {
     return getComputedStyle(element).backgroundColor;
   });
@@ -268,6 +315,9 @@ test("dev mode: catalog, payload edit, html/pdf preview, generate, dock panel be
   const firstSourceFile = page.getByTestId("source-explorer-file").first();
   const firstSourcePath = await firstSourceFile.getAttribute("data-file-path");
   expect(firstSourcePath).toBeTruthy();
+  const firstSourceLabel = firstSourceFile.getByTestId("source-explorer-file-label");
+  await firstSourceLabel.hover();
+  await expect(page.locator("[data-slot='tooltip-content']").last()).toContainText(firstSourcePath ?? "");
   await firstSourceFile.click();
   await expect(page.getByTestId("source-viewer-meta")).toContainText(firstSourcePath ?? "");
   await expect(page.getByTestId("source-viewer-copy")).toBeVisible();
@@ -293,10 +343,19 @@ test("dev mode: catalog, payload edit, html/pdf preview, generate, dock panel be
   await page.getByRole("button", { name: "components" }).click();
 
   if (testInfo.project.name.startsWith("vue-")) {
+    const tsTemplateFile = page.getByRole("button", { name: "template.ts" });
+    await tsTemplateFile.click();
+    await expect(tsTemplateFile).toHaveAttribute("data-icon-kind", "typescript");
     await page.getByRole("button", { name: "InvoiceReferenceDocument.vue" }).click();
+    await expect(
+      page.getByRole("button", { name: "InvoiceReferenceDocument.vue" }),
+    ).toHaveAttribute("data-icon-kind", "vue");
     await expect(page.getByTestId("source-view")).toContainText("<template>");
   } else {
     await page.getByRole("button", { name: "InvoiceReferenceDocument.tsx" }).click();
+    await expect(
+      page.getByRole("button", { name: "InvoiceReferenceDocument.tsx" }),
+    ).toHaveAttribute("data-icon-kind", "react");
     await expect(page.getByTestId("source-view")).toContainText("InvoiceReferenceDocument");
   }
 

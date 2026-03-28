@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react"
 import type { CSSProperties, ComponentProps } from "react"
-import { Check, ChevronRight, Copy, File, FileText, Folder } from "lucide-react"
+import { Check, ChevronRight, Copy, FileText, Folder } from "lucide-react"
 
 import { CodeEditor } from "@/components/ui/code-editor"
 import {
@@ -16,6 +16,11 @@ import {
   EmptyTitle,
 } from "@/components/ui/empty"
 import { ScrollArea } from "@/components/ui/scroll-area"
+import {
+  ResizableHandle,
+  ResizablePanel,
+  ResizablePanelGroup,
+} from "@/components/ui/resizable"
 import {
   Sidebar,
   SidebarContent,
@@ -36,10 +41,18 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 import type { InspectorEditorConfig } from "@/lib/editor-config"
+import { getExplorerFileLabel } from "@/lib/explorer-file-label"
 import {
   getFileExtensionBadge,
-  getFileName,
 } from "@/lib/explorer-file-meta"
+import { getSourceFileIconMeta } from "@/lib/icon-mapper"
+import {
+  SOURCE_EXPLORER_NAV_MAX_PERCENT,
+  SOURCE_EXPLORER_NAV_MIN_PERCENT,
+  clampSourceExplorerNavSize,
+  getSourceExplorerNavSizeFromLayout,
+  toPercentString,
+} from "@/lib/source-explorer-layout"
 import {
   buildExplorerTree,
   isAncestorPath,
@@ -77,6 +90,9 @@ interface InspectorCodeExplorerProps {
   }
   sectionLabel: string
   testIdPrefix: string
+  resizableNav?: boolean
+  navPanelSize?: number
+  onNavPanelSizeChange?: (size: number) => void
 }
 
 function buildListItemBadges(file: InspectorCodeExplorerFile) {
@@ -108,6 +124,9 @@ export function InspectorCodeExplorer({
   emptyState,
   sectionLabel,
   testIdPrefix,
+  resizableNav = false,
+  navPanelSize = 28,
+  onNavPanelSizeChange,
 }: InspectorCodeExplorerProps) {
   const [copiedFileId, setCopiedFileId] = useState<string>()
 
@@ -133,6 +152,17 @@ export function InspectorCodeExplorer({
     () => buildExplorerTree(files.map((file) => file.path)),
     [files],
   )
+  const selectedFileIconMeta = useMemo(
+    () =>
+      selectedFile ? getSourceFileIconMeta(selectedFile.path) : undefined,
+    [selectedFile],
+  )
+  const clampedNavSize = clampSourceExplorerNavSize(navPanelSize)
+  const navPanelId = `${testIdPrefix}-explorer-nav-panel`
+  const viewerPanelId = `${testIdPrefix}-explorer-viewer-panel`
+  const defaultNavSize = toPercentString(clampedNavSize)
+  const defaultViewerSize = toPercentString(100 - clampedNavSize)
+  const enableResizableNav = resizableNav && typeof onNavPanelSizeChange === "function"
 
   const onCopyFile = async () => {
     if (!selectedFile?.content) {
@@ -154,6 +184,137 @@ export function InspectorCodeExplorer({
   }
 
   const EmptyIcon = emptyState.icon ?? FileText
+  const navContent = (
+    <SidebarProvider
+      defaultOpen
+      className="h-full min-h-0 w-full"
+      style={{ "--sidebar-width": "100%" } as CSSProperties}
+    >
+      <Sidebar
+        collapsible="none"
+        className="w-full border-none bg-transparent text-foreground"
+      >
+        <SidebarContent className="overflow-hidden">
+          <SidebarGroup className="h-full min-h-0 p-0">
+            <SidebarGroupLabel className="h-10 rounded-none border-b px-3 text-[11px] uppercase tracking-wide text-muted-foreground">
+              {sectionLabel}
+            </SidebarGroupLabel>
+            <SidebarGroupContent className="min-h-0 flex-1">
+              <ScrollArea
+                className="h-full"
+                data-testid={`${testIdPrefix}-explorer-list-scroll`}
+              >
+                <SidebarMenu
+                  className="p-2"
+                  data-testid={`${testIdPrefix}-explorer-list`}
+                >
+                  {tree.map((node) => (
+                    <ExplorerTreeItem
+                      key={node.path}
+                      node={node}
+                      fileByPath={fileByPath}
+                      activeFileId={selectedFile?.id}
+                      onSelectFile={onSelectFile}
+                      testIdPrefix={testIdPrefix}
+                    />
+                  ))}
+                </SidebarMenu>
+              </ScrollArea>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        </SidebarContent>
+      </Sidebar>
+    </SidebarProvider>
+  )
+  const viewerContent = (
+    <div className="min-h-0 flex h-full flex-col bg-card" data-testid={`${testIdPrefix}-viewer`}>
+      {selectedFile ? (
+        <>
+          <div
+            className="sticky top-0 z-10 flex h-10 min-w-0 items-center gap-2 border-b bg-card px-3"
+            data-testid={`${testIdPrefix}-viewer-meta`}
+          >
+            <Badge
+              variant="secondary"
+              className="h-5 shrink-0 rounded-sm px-1.5 text-[10px] [&_svg]:size-3.5 [&_svg]:shrink-0"
+              data-icon-kind={selectedFileIconMeta?.kind ?? "file"}
+            >
+              {selectedFileIconMeta ? (
+                <selectedFileIconMeta.Icon aria-hidden="true" />
+              ) : null}
+              <span>{getFileExtensionBadge(selectedFile.path)}</span>
+            </Badge>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <p className="truncate font-mono text-xs text-muted-foreground">
+                  {selectedFile.path}
+                </p>
+              </TooltipTrigger>
+              <TooltipContent side="top" align="start">
+                <span className="font-mono text-xs">{selectedFile.path}</span>
+              </TooltipContent>
+            </Tooltip>
+            <Button
+              type="button"
+              size="icon-sm"
+              variant="ghost"
+              className="ml-auto shrink-0"
+              onClick={onCopyFile}
+              aria-label="Copy selected file content"
+              data-testid={`${testIdPrefix}-viewer-copy`}
+              disabled={!selectedFile.content}
+            >
+              {copiedFileId === selectedFile.id ? (
+                <Check />
+              ) : (
+                <Copy />
+              )}
+            </Button>
+          </div>
+
+          <div className="min-h-0 flex-1">
+            {selectedFile.status === "ready" ? (
+              <CodeEditor
+                value={selectedFile.content ?? ""}
+                config={resolveEditorConfig(selectedFile)}
+                variant="plain"
+                className="h-full"
+                data-testid={`${testIdPrefix}-view`}
+              />
+            ) : (
+              <Empty
+                className="h-full"
+                data-testid={`${testIdPrefix}-view-skipped`}
+              >
+                <EmptyHeader>
+                  <EmptyMedia variant="icon">
+                    <FileText />
+                  </EmptyMedia>
+                  <EmptyTitle>Source preview unavailable</EmptyTitle>
+                  <EmptyDescription>
+                    {resolveSkippedMessage(selectedFile)}
+                  </EmptyDescription>
+                  <Badge variant="outline" className="mt-2">
+                    {(selectedFile.bytes ?? 0).toLocaleString()} bytes
+                  </Badge>
+                </EmptyHeader>
+              </Empty>
+            )}
+          </div>
+        </>
+      ) : (
+        <Empty className="h-full" data-testid={`${testIdPrefix}-viewer-empty`}>
+          <EmptyHeader>
+            <EmptyMedia variant="icon">
+              <EmptyIcon />
+            </EmptyMedia>
+            <EmptyTitle>{emptyState.title}</EmptyTitle>
+            <EmptyDescription>{emptyState.description}</EmptyDescription>
+          </EmptyHeader>
+        </Empty>
+      )}
+    </div>
+  )
 
   return (
     <section
@@ -171,134 +332,59 @@ export function InspectorCodeExplorer({
           </EmptyHeader>
         </Empty>
       ) : (
-        <div className="grid h-full min-h-0 grid-cols-[16rem_minmax(0,1fr)]">
-          <div className="min-h-0 border-r bg-card" data-testid={`${testIdPrefix}-explorer-nav`}>
-            <SidebarProvider
-              defaultOpen
-              className="h-full min-h-0 w-full"
-              style={{ "--sidebar-width": "100%" } as CSSProperties}
+        <>
+          {enableResizableNav ? (
+            <ResizablePanelGroup
+              id={`${testIdPrefix}-explorer-group`}
+              orientation="horizontal"
+              className="h-full min-h-0"
+              onLayoutChanged={(layout) => {
+                onNavPanelSizeChange(
+                  getSourceExplorerNavSizeFromLayout(
+                    layout,
+                    navPanelId,
+                    clampedNavSize,
+                  ),
+                )
+              }}
             >
-              <Sidebar
-                collapsible="none"
-                className="w-full border-none bg-transparent text-foreground"
+              <ResizablePanel
+                id={navPanelId}
+                minSize={toPercentString(SOURCE_EXPLORER_NAV_MIN_PERCENT)}
+                maxSize={toPercentString(SOURCE_EXPLORER_NAV_MAX_PERCENT)}
+                defaultSize={defaultNavSize}
               >
-                <SidebarContent className="overflow-hidden">
-                  <SidebarGroup className="h-full min-h-0 p-0">
-                    <SidebarGroupLabel className="h-10 rounded-none border-b px-3 text-[11px] uppercase tracking-wide text-muted-foreground">
-                      {sectionLabel}
-                    </SidebarGroupLabel>
-                    <SidebarGroupContent className="min-h-0 flex-1">
-                      <ScrollArea
-                        className="h-full"
-                        data-testid={`${testIdPrefix}-explorer-list-scroll`}
-                      >
-                        <SidebarMenu
-                          className="p-2"
-                          data-testid={`${testIdPrefix}-explorer-list`}
-                        >
-                          {tree.map((node) => (
-                            <ExplorerTreeItem
-                              key={node.path}
-                              node={node}
-                              fileByPath={fileByPath}
-                              activeFileId={selectedFile?.id}
-                              onSelectFile={onSelectFile}
-                              testIdPrefix={testIdPrefix}
-                            />
-                          ))}
-                        </SidebarMenu>
-                      </ScrollArea>
-                    </SidebarGroupContent>
-                  </SidebarGroup>
-                </SidebarContent>
-              </Sidebar>
-            </SidebarProvider>
-          </div>
-
-          <div className="min-h-0 flex flex-col bg-card" data-testid={`${testIdPrefix}-viewer`}>
-            {selectedFile ? (
-              <>
                 <div
-                  className="sticky top-0 z-10 flex h-10 items-center gap-2 border-b bg-card px-3"
-                  data-testid={`${testIdPrefix}-viewer-meta`}
+                  className="h-full min-h-0 border-r bg-card"
+                  data-testid={`${testIdPrefix}-explorer-nav`}
                 >
-                  <Badge
-                    variant="secondary"
-                    className="h-5 rounded-sm px-1.5 font-mono text-[10px]"
-                  >
-                    {getFileExtensionBadge(selectedFile.path)}
-                  </Badge>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <p className="truncate font-mono text-xs text-muted-foreground">
-                        {selectedFile.path}
-                      </p>
-                    </TooltipTrigger>
-                    <TooltipContent side="top" align="start">
-                      <span className="font-mono text-xs">{selectedFile.path}</span>
-                    </TooltipContent>
-                  </Tooltip>
-                  <Button
-                    type="button"
-                    size="icon-sm"
-                    variant="ghost"
-                    className="ml-auto shrink-0"
-                    onClick={onCopyFile}
-                    aria-label="Copy selected file content"
-                    data-testid={`${testIdPrefix}-viewer-copy`}
-                    disabled={!selectedFile.content}
-                  >
-                    {copiedFileId === selectedFile.id ? (
-                      <Check />
-                    ) : (
-                      <Copy />
-                    )}
-                  </Button>
+                  {navContent}
                 </div>
-
-                <div className="min-h-0 flex-1">
-                  {selectedFile.status === "ready" ? (
-                    <CodeEditor
-                      value={selectedFile.content ?? ""}
-                      config={resolveEditorConfig(selectedFile)}
-                      variant="plain"
-                      className="h-full"
-                      data-testid={`${testIdPrefix}-view`}
-                    />
-                  ) : (
-                    <Empty
-                      className="h-full"
-                      data-testid={`${testIdPrefix}-view-skipped`}
-                    >
-                      <EmptyHeader>
-                        <EmptyMedia variant="icon">
-                          <FileText />
-                        </EmptyMedia>
-                        <EmptyTitle>Source preview unavailable</EmptyTitle>
-                        <EmptyDescription>
-                          {resolveSkippedMessage(selectedFile)}
-                        </EmptyDescription>
-                        <Badge variant="outline" className="mt-2">
-                          {(selectedFile.bytes ?? 0).toLocaleString()} bytes
-                        </Badge>
-                      </EmptyHeader>
-                    </Empty>
-                  )}
-                </div>
-              </>
-            ) : (
-              <Empty className="h-full" data-testid={`${testIdPrefix}-viewer-empty`}>
-                <EmptyHeader>
-                  <EmptyMedia variant="icon">
-                    <EmptyIcon />
-                  </EmptyMedia>
-                  <EmptyTitle>{emptyState.title}</EmptyTitle>
-                  <EmptyDescription>{emptyState.description}</EmptyDescription>
-                </EmptyHeader>
-              </Empty>
-            )}
-          </div>
-        </div>
+              </ResizablePanel>
+              <ResizableHandle
+                className="source-explorer-resize-handle relative -ml-px w-3 bg-transparent p-0 after:absolute after:top-1/2 after:left-0 after:h-8 after:w-[6px] after:-translate-x-1/2 after:-translate-y-1/2 after:rounded-full after:bg-border after:transition-all after:hover:h-10"
+                data-testid={`${testIdPrefix}-explorer-resize-handle`}
+              />
+              <ResizablePanel
+                id={viewerPanelId}
+                minSize={toPercentString(60)}
+                defaultSize={defaultViewerSize}
+              >
+                {viewerContent}
+              </ResizablePanel>
+            </ResizablePanelGroup>
+          ) : (
+            <div className="grid h-full min-h-0 grid-cols-[16rem_minmax(0,1fr)]">
+              <div
+                className="min-h-0 border-r bg-card"
+                data-testid={`${testIdPrefix}-explorer-nav`}
+              >
+                {navContent}
+              </div>
+              {viewerContent}
+            </div>
+          )}
+        </>
       )}
     </section>
   )
@@ -337,6 +423,9 @@ function ExplorerTreeItem({
   }
 
   const isActive = file.id === activeFileId
+  const iconMeta = getSourceFileIconMeta(file.path)
+  const label = getExplorerFileLabel(file.path)
+  const FileIcon = iconMeta.Icon
   return (
     <SidebarMenuItem>
       <SidebarMenuButton
@@ -345,10 +434,24 @@ function ExplorerTreeItem({
         data-testid={`${testIdPrefix}-explorer-file`}
         data-file-id={file.id}
         data-file-path={file.path}
-        className={cn("gap-2", isActive ? "shadow-none" : "")}
+        data-active={isActive}
+        data-icon-kind={iconMeta.kind}
+        className={cn("min-w-0 gap-2", isActive ? "shadow-none" : "")}
       >
-        <File />
-        <span className="truncate">{getFileName(file.path)}</span>
+        <FileIcon aria-hidden="true" />
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <span
+              className="min-w-0 flex-1 truncate"
+              data-testid={`${testIdPrefix}-explorer-file-label`}
+            >
+              {label.label}
+            </span>
+          </TooltipTrigger>
+          <TooltipContent side="top" align="start">
+            <span className="font-mono text-xs">{label.tooltip}</span>
+          </TooltipContent>
+        </Tooltip>
         {buildListItemBadges(file)}
       </SidebarMenuButton>
     </SidebarMenuItem>
@@ -382,10 +485,17 @@ function FolderTreeItem({
         className="group/collapsible [&[data-state=open]>button>svg:first-child]:rotate-90"
       >
         <CollapsibleTrigger asChild>
-          <SidebarMenuButton>
+          <SidebarMenuButton className="min-w-0 gap-2">
             <ChevronRight className="transition-transform" />
             <Folder />
-            <span className="truncate">{folder.name}</span>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className="min-w-0 flex-1 truncate">{folder.name}</span>
+              </TooltipTrigger>
+              <TooltipContent side="top" align="start">
+                <span className="font-mono text-xs">{folder.path}</span>
+              </TooltipContent>
+            </Tooltip>
           </SidebarMenuButton>
         </CollapsibleTrigger>
         <CollapsibleContent>

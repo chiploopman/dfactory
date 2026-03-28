@@ -59,6 +59,7 @@ import {
   type RenderMode,
 } from "@/lib/api"
 import { getInspectorEditorConfig } from "@/lib/editor-config"
+import { SOURCE_EXPLORER_NAV_DEFAULT_PERCENT } from "@/lib/source-explorer-layout"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
 import type {
@@ -147,6 +148,9 @@ export default function App() {
   const [panelOpen, setPanelOpen] = useState(true)
   const [activePanelTab, setActivePanelTab] = useState<PanelTab>("payload")
   const [desktopPanelSize, setDesktopPanelSize] = useState(33)
+  const [sourceExplorerNavSize, setSourceExplorerNavSize] = useState(
+    SOURCE_EXPLORER_NAV_DEFAULT_PERCENT,
+  )
   const [isDesktop, setIsDesktop] = useState(() => {
     if (typeof window === "undefined") {
       return false
@@ -559,6 +563,9 @@ export default function App() {
             }}
             sectionLabel="Template Files"
             testIdPrefix="source"
+            resizableNav={isDesktop}
+            navPanelSize={sourceExplorerNavSize}
+            onNavPanelSizeChange={setSourceExplorerNavSize}
           />
         ) : null}
 
