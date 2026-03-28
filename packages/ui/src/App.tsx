@@ -12,6 +12,7 @@ import {
   TerminalSquare,
 } from "lucide-react"
 
+import { InspectorFileRail } from "@/components/inspector-file-rail"
 import { TemplateCatalog } from "@/components/template-catalog"
 import { Topbar } from "@/components/topbar"
 import { Badge } from "@/components/ui/badge"
@@ -42,10 +43,11 @@ import { Separator } from "@/components/ui/separator"
 import { Spinner } from "@/components/ui/spinner"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip"
+  DEFAULT_SCHEMA_DOC_TAB_ID,
+  resolveSchemaDocTabId,
+  SCHEMA_DOC_TABS,
+  type SchemaDocTabId,
+} from "@/lib/schema-doc-tabs"
 import {
   fetchRuntime,
   fetchTemplateSchema,
@@ -134,6 +136,9 @@ export default function App() {
   const [payloadText, setPayloadText] = useState<string>(
     pretty(DEFAULT_PAYLOAD),
   )
+  const [activeSchemaDoc, setActiveSchemaDoc] = useState<SchemaDocTabId>(
+    DEFAULT_SCHEMA_DOC_TAB_ID,
+  )
   const [runtime, setRuntime] = useState<RuntimeConfig>()
   const [query, setQuery] = useState("")
   const [mode, setMode] = useState<RenderMode>("html")
@@ -183,6 +188,28 @@ export default function App() {
       ),
     )
   }, [sourceManifest])
+  const sourceRailItems = useMemo(() => {
+    if (!sourceManifest) {
+      return []
+    }
+
+    return sourceManifest.files.map((file) => ({
+      value: file.path,
+      label: sourceTabLabelMap.get(file.path) ?? file.path,
+      tooltip: file.path,
+      badges: [
+        ...(file.entry
+          ? [{ label: "entry", variant: "secondary" as const }]
+          : []),
+        ...(file.status === "skipped"
+          ? [{ label: "skipped", variant: "outline" as const }]
+          : []),
+      ],
+      tabDataAttributes: {
+        "data-file-path": file.path,
+      },
+    }))
+  }, [sourceManifest, sourceTabLabelMap])
 
   const sourceEnabled = runtime
     ? !runtime.isProduction || runtime.ui.sourceInProd
@@ -497,20 +524,43 @@ export default function App() {
         ) : null}
 
         {activePanel.id === "schema" ? (
-          <div className="grid h-full min-h-0 gap-3 md:grid-cols-2">
-            <CodeEditor
-              value={schemaJson}
-              config={getInspectorEditorConfig({ panel: "schema" })}
-              className="h-full"
-              data-testid="schema-view"
+          <Tabs
+            value={activeSchemaDoc}
+            onValueChange={(nextValue) =>
+              setActiveSchemaDoc(resolveSchemaDocTabId(nextValue))
+            }
+            className="h-full gap-0"
+          >
+            <InspectorFileRail
+              items={SCHEMA_DOC_TABS.map((tab) => ({
+                value: tab.id,
+                label: tab.label,
+                tooltip: tab.tooltip,
+                tabDataAttributes: { "data-doc-id": tab.id },
+              }))}
+              railTestId="schema-file-rail"
+              scrollTestId="schema-file-tabs-scroll"
+              listTestId="schema-file-tablist"
+              tabTestId="schema-file-tab"
             />
-            <CodeEditor
-              value={featuresJson}
-              config={getInspectorEditorConfig({ panel: "schema" })}
-              className="h-full"
-              data-testid="features-view"
-            />
-          </div>
+            <div className="min-h-0 flex-1 pt-3">
+              {activeSchemaDoc === "features-json" ? (
+                <CodeEditor
+                  value={featuresJson}
+                  config={getInspectorEditorConfig({ panel: "schema" })}
+                  className="h-full"
+                  data-testid="features-view"
+                />
+              ) : (
+                <CodeEditor
+                  value={schemaJson}
+                  config={getInspectorEditorConfig({ panel: "schema" })}
+                  className="h-full"
+                  data-testid="schema-view"
+                />
+              )}
+            </div>
+          </Tabs>
         ) : null}
 
         {activePanel.id === "source" ? (
@@ -520,50 +570,13 @@ export default function App() {
               onValueChange={setActiveSourceFilePath}
               className="h-full gap-0"
             >
-              <div
-                className="sticky top-0 z-10 -mx-1 border-b border-border/80 bg-background/95 px-1 py-2 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-background/85"
-                data-testid="source-file-rail"
-              >
-                <ScrollArea
-                  className="w-full"
-                  data-testid="source-file-tabs-scroll"
-                >
-                  <TabsList
-                    className="h-9 w-max justify-start gap-1 rounded-lg border border-border/70 bg-muted/70 p-1"
-                    data-testid="source-file-tablist"
-                  >
-                    {sourceManifest.files.map((file) => (
-                      <Tooltip key={file.path}>
-                        <TooltipTrigger asChild>
-                          <TabsTrigger
-                            value={file.path}
-                            className="h-7 gap-1.5 text-muted-foreground transition-colors hover:text-foreground data-[state=active]:border-border data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm"
-                            data-testid="source-file-tab"
-                            data-file-path={file.path}
-                          >
-                            <span className="max-w-56 truncate font-mono text-xs">
-                              {sourceTabLabelMap.get(file.path) ?? file.path}
-                            </span>
-                            {file.entry ? (
-                              <Badge variant="secondary" className="text-[10px]">
-                                entry
-                              </Badge>
-                            ) : null}
-                            {file.status === "skipped" ? (
-                              <Badge variant="outline" className="text-[10px]">
-                                skipped
-                              </Badge>
-                            ) : null}
-                          </TabsTrigger>
-                        </TooltipTrigger>
-                        <TooltipContent side="top" align="start">
-                          <span className="font-mono text-xs">{file.path}</span>
-                        </TooltipContent>
-                      </Tooltip>
-                    ))}
-                  </TabsList>
-                </ScrollArea>
-              </div>
+              <InspectorFileRail
+                items={sourceRailItems}
+                railTestId="source-file-rail"
+                scrollTestId="source-file-tabs-scroll"
+                listTestId="source-file-tablist"
+                tabTestId="source-file-tab"
+              />
 
               <div className="min-h-0 flex-1 pt-3">
                 {selectedSourceFile?.status === "ready" ? (
