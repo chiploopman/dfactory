@@ -199,20 +199,19 @@ test("dev mode: catalog, payload edit, html/pdf preview, generate, dock panel be
 
   await page.getByTestId("dock-tab-schema").click();
   await expect(page.getByTestId("bottom-panel")).toBeVisible();
-  await expect(page.getByTestId("schema-file-rail")).toBeVisible();
-  await expect(page.getByTestId("schema-file-tablist")).toBeVisible();
-  await expect(page.getByTestId("schema-file-tablist")).toHaveAttribute("data-variant", "default");
-  const activeSchemaTab = page
-    .getByTestId("schema-file-tablist")
-    .locator("[role='tab'][aria-selected='true']")
+  await expect(page.getByTestId("schema-explorer")).toBeVisible();
+  await expect(page.getByTestId("schema-explorer-list")).toBeVisible();
+  const activeSchemaFile = page
+    .locator('[data-testid="schema-explorer-file"][data-active="true"]')
     .first();
-  await expect(activeSchemaTab).toBeVisible();
-  await expect(activeSchemaTab).toHaveAttribute("data-doc-id", "schema-json");
+  await expect(activeSchemaFile).toBeVisible();
+  await expect(page.getByTestId("schema-viewer-meta")).toContainText("schema.json");
   await expect(page.getByTestId("schema-view").locator(".cm-editor")).toBeVisible();
   await expect(page.getByTestId("schema-view")).toContainText("invoiceNumber");
-  await page.getByRole("tab", { name: "features.json" }).click();
-  await expect(page.getByTestId("features-view").locator(".cm-editor")).toBeVisible();
-  await expect(page.getByTestId("features-view")).toContainText("\"toc\"");
+  await page.getByRole("button", { name: "features.json" }).click();
+  await expect(page.getByTestId("schema-viewer-meta")).toContainText("features.json");
+  await expect(page.getByTestId("schema-view").locator(".cm-editor")).toBeVisible();
+  await expect(page.getByTestId("schema-view")).toContainText("\"toc\"");
 
   await page.getByTestId("dock-tab-schema").click();
   await expect(page.getByTestId("bottom-panel")).toHaveCount(0);
@@ -224,38 +223,35 @@ test("dev mode: catalog, payload edit, html/pdf preview, generate, dock panel be
 
   await page.getByTestId("dock-tab-source").click();
   await expect(page.getByTestId("bottom-panel")).toBeVisible();
-  await expect(page.getByTestId("source-file-rail")).toBeVisible();
-  const sourceRailClassName = await page.getByTestId("source-file-rail").evaluate((element) => {
+  await expect(page.getByTestId("source-explorer")).toBeVisible();
+  const sourceExplorerClassName = await page.getByTestId("source-explorer").evaluate((element) => {
     return element.className;
   });
-  expect(sourceRailClassName).toContain("sticky");
-  expect(sourceRailClassName).toContain("top-0");
-  await expect(page.getByTestId("source-file-tablist")).toBeVisible();
-  await expect(page.getByTestId("source-file-tablist")).toHaveAttribute("data-variant", "default");
-  await expect(page.getByTestId("source-file-tab").first()).toBeVisible();
-  const sourceRailBackground = await page.getByTestId("source-file-rail").evaluate((element) => {
+  expect(sourceExplorerClassName).toContain("overflow-hidden");
+  await expect(page.getByTestId("source-explorer-list")).toBeVisible();
+  await expect(page.getByTestId("source-explorer-file").first()).toBeVisible();
+  const sourceExplorerBackground = await page.getByTestId("source-explorer").evaluate((element) => {
     return getComputedStyle(element).backgroundColor;
   });
   const bottomPanelBackground = await page.getByTestId("bottom-panel").evaluate((element) => {
     return getComputedStyle(element).backgroundColor;
   });
-  expect(sourceRailBackground).not.toBe(bottomPanelBackground);
-  const activeSourceTab = page
-    .getByTestId("source-file-tablist")
-    .locator("[role='tab'][aria-selected='true']")
+  expect(sourceExplorerBackground).not.toBe(bottomPanelBackground);
+  const activeSourceFile = page
+    .locator('[data-testid="source-explorer-file"][data-active="true"]')
     .first();
-  await expect(activeSourceTab).toBeVisible();
-  const firstSourceTab = page.getByTestId("source-file-tab").first();
-  const firstSourcePath = await firstSourceTab.getAttribute("data-file-path");
+  await expect(activeSourceFile).toBeVisible();
+  const firstSourceFile = page.getByTestId("source-explorer-file").first();
+  const firstSourcePath = await firstSourceFile.getAttribute("data-file-path");
   expect(firstSourcePath).toBeTruthy();
-  await firstSourceTab.hover();
-  await expect(page.locator("[data-slot='tooltip-content']").filter({ hasText: firstSourcePath ?? "" }).first()).toBeVisible();
-  const activeTabBackground = await activeSourceTab.evaluate((element) => {
+  await firstSourceFile.click();
+  await expect(page.getByTestId("source-viewer-meta")).toContainText(firstSourcePath ?? "");
+  await expect(page.getByTestId("source-viewer-copy")).toBeVisible();
+  const activeTabBackground = await activeSourceFile.evaluate((element) => {
     return getComputedStyle(element).backgroundColor;
   });
   const inactiveSourceTab = page
-    .getByTestId("source-file-tablist")
-    .locator("[role='tab'][aria-selected='false']")
+    .locator('[data-testid="source-explorer-file"][data-active="false"]')
     .first();
   if ((await inactiveSourceTab.count()) > 0) {
     const inactiveTabBackground = await inactiveSourceTab.evaluate((element) => {
@@ -263,7 +259,7 @@ test("dev mode: catalog, payload edit, html/pdf preview, generate, dock panel be
     });
     expect(activeTabBackground).not.toBe(inactiveTabBackground);
   } else {
-    const activeTabBorder = await activeSourceTab.evaluate((element) => {
+    const activeTabBorder = await activeSourceFile.evaluate((element) => {
       return getComputedStyle(element).borderColor;
     });
     expect(activeTabBorder).not.toBe("rgba(0, 0, 0, 0)");
@@ -272,7 +268,7 @@ test("dev mode: catalog, payload edit, html/pdf preview, generate, dock panel be
   await expect(page.getByTestId("source-view")).toContainText("defineTemplate");
 
   if (testInfo.project.name.startsWith("vue-")) {
-    await page.getByRole("tab", { name: "InvoiceTemplate.vue" }).click();
+    await page.getByRole("button", { name: "InvoiceTemplate.vue" }).click();
     await expect(page.getByTestId("source-view")).toContainText("<template>");
   }
 
@@ -298,14 +294,9 @@ test("prod mode: source and playground tabs are hidden by default", async ({ pag
 
   await page.getByTestId("dock-tab-schema").click();
   await expect(page.getByTestId("bottom-panel")).toBeVisible();
-  await expect(page.getByTestId("schema-file-rail")).toBeVisible();
-  await expect(page.getByTestId("schema-file-tablist")).toBeVisible();
-  await expect(
-    page
-      .getByTestId("schema-file-tablist")
-      .locator("[role='tab'][aria-selected='true']")
-      .first(),
-  ).toHaveAttribute("data-doc-id", "schema-json");
+  await expect(page.getByTestId("schema-explorer")).toBeVisible();
+  await expect(page.getByTestId("schema-explorer-list")).toBeVisible();
+  await expect(page.getByTestId("schema-viewer-meta")).toContainText("schema.json");
   await expect(page.getByTestId("schema-view").locator(".cm-editor")).toBeVisible();
   await expect(page.getByTestId("schema-view")).toContainText("invoiceNumber");
 });

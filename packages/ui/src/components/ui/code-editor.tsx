@@ -15,11 +15,21 @@ interface CodeEditorProps {
   config: InspectorEditorConfig
   onChange?: (value: string) => void
   className?: string
+  variant?: "framed" | "plain"
   "data-testid"?: string
 }
 
 function createLanguageExtensions(config: InspectorEditorConfig) {
-  const extensions = []
+  const extensions = [
+    EditorView.theme({
+      "&": {
+        fontSize: "var(--dfactory-code-font-size, 15px)",
+      },
+      ".cm-gutters": {
+        fontSize: "var(--dfactory-code-font-size, 15px)",
+      },
+    }),
+  ]
 
   if (config.language === "json") {
     extensions.push(json())
@@ -45,6 +55,7 @@ export function CodeEditor({
   config,
   onChange,
   className,
+  variant = "framed",
   "data-testid": dataTestId,
 }: CodeEditorProps) {
   const extensions = createLanguageExtensions(config)
@@ -52,7 +63,9 @@ export function CodeEditor({
   return (
     <div
       className={cn(
-        "h-full rounded-lg border bg-muted/30 p-0 overflow-hidden",
+        variant === "plain"
+          ? "h-full p-0 overflow-hidden"
+          : "h-full rounded-lg border bg-muted/30 p-0 overflow-hidden",
         className,
       )}
       data-testid={dataTestId}
@@ -74,7 +87,7 @@ export function CodeEditor({
           foldGutter: true,
           autocompletion: !config.readOnly,
         }}
-        className="h-full text-xs [&_.cm-editor]:h-full [&_.cm-gutters]:bg-transparent [&_.cm-scroller]:font-mono"
+        className="h-full [&_.cm-editor]:h-full [&_.cm-gutters]:bg-transparent [&_.cm-scroller]:font-mono"
       />
     </div>
   )

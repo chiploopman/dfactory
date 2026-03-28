@@ -12,10 +12,9 @@ import {
   TerminalSquare,
 } from "lucide-react"
 
-import { InspectorFileRail } from "@/components/inspector-file-rail"
+import { InspectorCodeExplorer } from "@/components/inspector-code-explorer"
 import { TemplateCatalog } from "@/components/template-catalog"
 import { Topbar } from "@/components/topbar"
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -60,7 +59,6 @@ import {
   type RenderMode,
 } from "@/lib/api"
 import { getInspectorEditorConfig } from "@/lib/editor-config"
-import { buildSourceTabLabels } from "@/lib/source-tab-labels"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
 import type {
@@ -177,26 +175,28 @@ export default function App() {
     const fallbackPath = resolveInitialSourceFilePath(sourceManifest)
     return sourceManifest.files.find((file) => file.path === fallbackPath)
   }, [activeSourceFilePath, sourceManifest])
-  const sourceTabLabelMap = useMemo(() => {
-    if (!sourceManifest || sourceManifest.files.length === 0) {
-      return new Map<string, string>()
-    }
-
-    return new Map(
-      buildSourceTabLabels(sourceManifest.files.map((file) => file.path)).map(
-        (item) => [item.path, item.label],
-      ),
-    )
-  }, [sourceManifest])
-  const sourceRailItems = useMemo(() => {
+  const schemaExplorerFiles = useMemo(
+    () =>
+      SCHEMA_DOC_TABS.map((tab) => ({
+        id: tab.id,
+        path: tab.label,
+        status: "ready" as const,
+        content: tab.id === "features-json" ? featuresJson : schemaJson,
+      })),
+    [featuresJson, schemaJson],
+  )
+  const sourceExplorerFiles = useMemo(() => {
     if (!sourceManifest) {
       return []
     }
 
     return sourceManifest.files.map((file) => ({
-      value: file.path,
-      label: sourceTabLabelMap.get(file.path) ?? file.path,
-      tooltip: file.path,
+      id: file.path,
+      path: file.path,
+      status: file.status,
+      content: file.content,
+      skipReason: file.skipReason,
+      bytes: file.bytes,
       badges: [
         ...(file.entry
           ? [{ label: "entry", variant: "secondary" as const }]
@@ -205,11 +205,8 @@ export default function App() {
           ? [{ label: "skipped", variant: "outline" as const }]
           : []),
       ],
-      tabDataAttributes: {
-        "data-file-path": file.path,
-      },
     }))
-  }, [sourceManifest, sourceTabLabelMap])
+  }, [sourceManifest])
 
   const sourceEnabled = runtime
     ? !runtime.isProduction || runtime.ui.sourceInProd
@@ -524,110 +521,45 @@ export default function App() {
         ) : null}
 
         {activePanel.id === "schema" ? (
-          <Tabs
-            value={activeSchemaDoc}
-            onValueChange={(nextValue) =>
-              setActiveSchemaDoc(resolveSchemaDocTabId(nextValue))
+          <InspectorCodeExplorer
+            files={schemaExplorerFiles}
+            activeFileId={activeSchemaDoc}
+            onSelectFile={(fileId) =>
+              setActiveSchemaDoc(resolveSchemaDocTabId(fileId))
             }
-            className="h-full gap-0"
-          >
-            <InspectorFileRail
-              items={SCHEMA_DOC_TABS.map((tab) => ({
-                value: tab.id,
-                label: tab.label,
-                tooltip: tab.tooltip,
-                tabDataAttributes: { "data-doc-id": tab.id },
-              }))}
-              railTestId="schema-file-rail"
-              scrollTestId="schema-file-tabs-scroll"
-              listTestId="schema-file-tablist"
-              tabTestId="schema-file-tab"
-            />
-            <div className="min-h-0 flex-1 pt-3">
-              {activeSchemaDoc === "features-json" ? (
-                <CodeEditor
-                  value={featuresJson}
-                  config={getInspectorEditorConfig({ panel: "schema" })}
-                  className="h-full"
-                  data-testid="features-view"
-                />
-              ) : (
-                <CodeEditor
-                  value={schemaJson}
-                  config={getInspectorEditorConfig({ panel: "schema" })}
-                  className="h-full"
-                  data-testid="schema-view"
-                />
-              )}
-            </div>
-          </Tabs>
+            resolveEditorConfig={() => getInspectorEditorConfig({ panel: "schema" })}
+            resolveSkippedMessage={() => "File is not available for preview."}
+            emptyState={{
+              title: "Schema documents unavailable",
+              description: "Unable to load schema and feature documents.",
+              icon: FileJson2,
+            }}
+            sectionLabel="Schema Files"
+            testIdPrefix="schema"
+          />
         ) : null}
 
         {activePanel.id === "source" ? (
-          sourceManifest && sourceManifest.files.length > 0 ? (
-            <Tabs
-              value={selectedSourceFile?.path}
-              onValueChange={setActiveSourceFilePath}
-              className="h-full gap-0"
-            >
-              <InspectorFileRail
-                items={sourceRailItems}
-                railTestId="source-file-rail"
-                scrollTestId="source-file-tabs-scroll"
-                listTestId="source-file-tablist"
-                tabTestId="source-file-tab"
-              />
-
-              <div className="min-h-0 flex-1 pt-3">
-                {selectedSourceFile?.status === "ready" ? (
-                  <CodeEditor
-                    value={selectedSourceFile.content ?? ""}
-                    config={getInspectorEditorConfig({
-                      panel: "source",
-                      sourceFilePath: selectedSourceFile.path,
-                    })}
-                    className="h-full"
-                    data-testid="source-view"
-                  />
-                ) : (
-                  <Empty
-                    className="h-full rounded-lg border bg-muted/15"
-                    data-testid="source-view-skipped"
-                  >
-                    <EmptyHeader>
-                      <EmptyMedia variant="icon">
-                        <FileText />
-                      </EmptyMedia>
-                      <EmptyTitle>Source preview unavailable</EmptyTitle>
-                      <EmptyDescription>
-                        {formatSourceSkipReason(selectedSourceFile?.skipReason)}
-                      </EmptyDescription>
-                    </EmptyHeader>
-                    <EmptyContent>
-                      <Badge variant="outline">
-                        {(selectedSourceFile?.bytes ?? 0).toLocaleString()} bytes
-                      </Badge>
-                    </EmptyContent>
-                  </Empty>
-                )}
-              </div>
-            </Tabs>
-          ) : (
-            <Empty
-              className="h-full rounded-lg border bg-muted/15"
-              data-testid="source-view-empty"
-            >
-              <EmptyHeader>
-                <EmptyMedia variant="icon">
-                  <Code2 />
-                </EmptyMedia>
-                <EmptyTitle>No source files found</EmptyTitle>
-                <EmptyDescription>
-                  This template folder does not contain previewable source files.
-                </EmptyDescription>
-              </EmptyHeader>
-            </Empty>
-          )
+          <InspectorCodeExplorer
+            files={sourceExplorerFiles}
+            activeFileId={selectedSourceFile?.path}
+            onSelectFile={setActiveSourceFilePath}
+            resolveEditorConfig={(file) =>
+              getInspectorEditorConfig({
+                panel: "source",
+                sourceFilePath: file.path,
+              })
+            }
+            resolveSkippedMessage={(file) => formatSourceSkipReason(file.skipReason)}
+            emptyState={{
+              title: "No source files found",
+              description:
+                "This template folder does not contain previewable source files.",
+              icon: Code2,
+            }}
+            sectionLabel="Template Files"
+            testIdPrefix="source"
+          />
         ) : null}
 
         {activePanel.id === "playground" ? (
