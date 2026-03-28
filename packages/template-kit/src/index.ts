@@ -1,5 +1,6 @@
 import type {
   PdfTemplateConfig,
+  TemplatePdfElements,
   TemplateExample,
   TemplateMeta,
   TemplateModule,
@@ -17,6 +18,7 @@ export interface DefineTemplateInput<TSchema extends ZodTypeAny, TPayload> {
     context?: TemplateRenderContext
   ) => unknown | Promise<unknown>;
   pdf?: PdfTemplateConfig;
+  pdfElements?: TemplatePdfElements<TPayload>;
   examples?: TemplateExample<TPayload>[];
 }
 

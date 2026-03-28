@@ -57,4 +57,67 @@ describe("pdf-feature-standard", () => {
     expect(diagnostics[0]?.level).toBe("warn");
     expect(diagnostics[0]?.message).toContain("@dfactory/pdf-feature-pagedjs");
   });
+
+  it("prioritizes first-class pdf element renderers over legacy defaults", async () => {
+    const context = {
+      templateId: "invoice-reference",
+      templateMeta: {
+        id: "invoice-reference",
+        title: "Invoice Reference",
+        framework: "react",
+        version: "1.0.0"
+      },
+      resolvedFeatures: {
+        toc: {
+          enabled: true,
+          maxDepth: 2,
+          title: "Contents"
+        },
+        headerFooter: {
+          enabled: true,
+          footerTemplate: "<div>legacy-footer</div>"
+        },
+        watermark: {
+          text: "LEGACY"
+        },
+        pagination: {
+          mode: "css"
+        }
+      },
+      templatePdfElements: {
+        toc: {
+          async render(context: { headings?: Array<{ text: string }> }) {
+            return `<nav data-custom-toc="true">${context.headings?.[0]?.text ?? "none"}</nav>`;
+          }
+        },
+        header: {
+          template: "<div>Header {{title}}</div>"
+        },
+        footer: {
+          async render() {
+            return "<div>Footer {{pageNumber}} / {{totalPages}}</div>";
+          }
+        },
+        watermark: {
+          template: "<div>WATERMARK-ELEMENT</div>"
+        },
+        pagination: {
+          template: "<div>PAGINATION-ELEMENT</div>"
+        }
+      },
+      html: "<!doctype html><html><head></head><body><h1>Main</h1><h2>Sub</h2></body></html>",
+      diagnostics: [],
+      options: {}
+    } as Parameters<NonNullable<typeof pdfFeaturePlugin.htmlPre>>[0];
+
+    const output = await pdfFeaturePlugin.htmlPre?.(context);
+    const html = typeof output === "string" ? output : context.html;
+
+    expect(html).toContain("data-custom-toc");
+    expect(html).toContain("WATERMARK-ELEMENT");
+    expect(html).toContain("PAGINATION-ELEMENT");
+    expect(context.resolvedFeatures.headerFooter?.headerTemplate).toContain("Header {{title}}");
+    expect(context.resolvedFeatures.headerFooter?.footerTemplate).toContain("Footer {{pageNumber}}");
+    expect(context.resolvedFeatures.watermark?.text).toBeUndefined();
+  });
 });

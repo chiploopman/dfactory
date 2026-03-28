@@ -28,6 +28,21 @@ const template = defineTemplate({
     toc: { enabled: true },
     pagination: { mode: "css" }
   },
+  pdfElements: {
+    header: {
+      render(ctx) {
+        return `<div>${ctx.template.title} • ${ctx.tokens.date}</div>`;
+      }
+    },
+    footer: {
+      template: "<div>{{pageNumber}} / {{totalPages}}</div>"
+    },
+    toc: {
+      render(ctx) {
+        return `<nav>${ctx.headings.map((h) => h.text).join(", ")}</nav>`;
+      }
+    }
+  },
   examples: [
     {
       name: "default",
@@ -42,9 +57,40 @@ const template = defineTemplate({
 export const meta = template.meta;
 export const schema = template.schema;
 export const pdf = template.pdf;
+export const pdfElements = template.pdfElements;
 export const examples = template.examples;
 export const render = template.render;
 ```
+
+## First-class PDF elements
+
+`pdfElements` is additive and non-breaking. Each element supports either:
+
+- `render(context)` for framework-native component rendering (React/Vue nodes or HTML string).
+- `template` for direct string fallback.
+
+Supported elements:
+
+- `toc`
+- `header`
+- `footer`
+- `watermark`
+- `pagination`
+
+Renderer precedence is deterministic:
+
+1. `pdfElements.<element>.render`
+2. `pdfElements.<element>.template`
+3. Legacy `pdf.*` behavior/defaults
+
+Element render context includes:
+
+- Run metadata: `runId`, `mode`, `profile`, `now`
+- Template metadata: `template`, `templateId`
+- `payload` and resolved `features`
+- Token helpers: `{{pageNumber}}`, `{{totalPages}}`, `{{date}}`, `{{title}}`, `{{templateId}}`
+- Pagination helpers/marker classes
+- TOC heading map (`headings`) for TOC renderers
 
 ## PDF template features
 
@@ -57,6 +103,13 @@ export const render = template.render;
 - `assets` (HTTPS + data URI policies)
 - `fonts` (`@font-face` manifest)
 - `metadata` and optional `watermark` (with `@dfactory/pdf-feature-pdf-lib`)
+
+## Reference templates
+
+Starters now include:
+
+- `invoice` (simple onboarding template)
+- `invoice-reference` (rich, multi-file template showing first-class TOC/header/footer/watermark/pagination patterns)
 
 ## Runtime configuration
 

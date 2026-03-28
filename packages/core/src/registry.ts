@@ -13,14 +13,18 @@ import {
   collectTemplateSourceFiles,
   DEFAULT_TEMPLATE_SOURCE_MAX_FILE_BYTES
 } from "./source-manifest";
+import { PDF_TEMPLATE_ELEMENT_NAMES } from "./types";
 import type {
   DFactoryConfig,
   DFactoryFrameworkPlugin,
   DFactoryModuleLoaderFactory,
   DoctorCheckResult,
   LoadedTemplate,
+  PdfMarkerName,
+  PdfTemplateElementName,
   RegistryOptions,
   RegistryRuntimeInfo,
+  ResolvedTemplatePdfElements,
   RenderResult,
   RenderMode,
   TemplateAdapter,
@@ -28,11 +32,16 @@ import type {
   TemplateExample,
   TemplateMeta,
   TemplateModule,
-  TemplateSourceManifest,
-  TemplatePdfFeatureOverrides,
-  PdfTemplateConfig,
-  TemplateRenderContext,
   TemplateModuleLoader,
+  TemplatePdfElementContext,
+  TemplatePdfElementRenderRuntime,
+  TemplatePdfElementCapabilities,
+  TemplatePdfElements,
+  TemplatePdfFeatureOverrides,
+  TemplateRenderContext,
+  TemplateSourceManifest,
+  PdfTemplateConfig,
+  TemplateTokenHelpers,
   TemplateSummary
 } from "./types";
 import { inferTemplateId } from "./utils";
@@ -45,6 +54,12 @@ const templateMetaSchema = z.object({
   version: z.string(),
   tags: z.array(z.string()).optional()
 });
+
+const MARKER_CLASS_MAP: Record<PdfMarkerName, string> = {
+  pageBreakBefore: "df-page-break-before",
+  keepWithNext: "df-keep-with-next",
+  avoidBreak: "df-avoid-break"
+};
 
 function assertTemplateModule(value: unknown, filePath: string): TemplateModule {
   const record = value as Partial<TemplateModule>;
@@ -119,28 +134,160 @@ function createTemplateRenderContext(options: {
   profile?: string;
   features: PdfTemplateConfig;
 }): TemplateRenderContext {
+  const now = new Date();
   return {
     runId: options.runId,
     mode: options.mode,
     profile: options.profile,
-    now: new Date(),
+    now,
     templateId: options.templateId,
     features: options.features,
     helpers: {
       markerClass(name) {
-        switch (name) {
-          case "pageBreakBefore":
-            return "df-page-break-before";
-          case "keepWithNext":
-            return "df-keep-with-next";
-          case "avoidBreak":
-            return "df-avoid-break";
-          default:
-            return "";
-        }
+        return MARKER_CLASS_MAP[name] ?? "";
       }
     }
   };
+}
+
+function createTokenHelpers(options: {
+  templateId: string;
+  title?: string;
+  now: Date;
+}): TemplateTokenHelpers {
+  const tokenValues = {
+    pageNumber: "{{pageNumber}}",
+    totalPages: "{{totalPages}}",
+    date: "{{date}}",
+    title: "{{title}}",
+    templateId: "{{templateId}}"
+  };
+
+  const resolve = (extraTokens?: Record<string, string>): Record<string, string> => ({
+    [tokenValues.pageNumber]: `<span class="pageNumber"></span>`,
+    [tokenValues.totalPages]: `<span class="totalPages"></span>`,
+    [tokenValues.date]: options.now.toISOString(),
+    [tokenValues.title]: options.title ?? "",
+    [tokenValues.templateId]: options.templateId,
+    ...(extraTokens ?? {})
+  });
+
+  return {
+    ...tokenValues,
+    resolve,
+    apply(template, extraTokens) {
+      const replacements = resolve(extraTokens);
+      let output = template;
+      for (const [token, value] of Object.entries(replacements)) {
+        output = output.replaceAll(token, value);
+      }
+      return output;
+    }
+  };
+}
+
+function createTemplatePdfElementCapabilities(
+  pdfElements: TemplatePdfElements | undefined
+): TemplatePdfElementCapabilities {
+  const capabilities = {} as TemplatePdfElementCapabilities;
+  for (const elementName of PDF_TEMPLATE_ELEMENT_NAMES) {
+    const definition = pdfElements?.[elementName];
+    capabilities[elementName] = {
+      defined: Boolean(definition),
+      hasRender: typeof definition?.render === "function",
+      hasTemplate:
+        typeof definition?.template === "string" &&
+        definition.template.trim().length > 0
+    };
+  }
+  return capabilities;
+}
+
+function createResolvedTemplatePdfElements(options: {
+  template: LoadedTemplate;
+  adapter: TemplateAdapter;
+  payload: unknown;
+  renderContext: TemplateRenderContext;
+  features: PdfTemplateConfig;
+}): {
+  elements: ResolvedTemplatePdfElements;
+  capabilities: TemplatePdfElementCapabilities;
+} {
+  const pdfElements = options.template.module.pdfElements;
+  const capabilities = createTemplatePdfElementCapabilities(pdfElements);
+  const elements: ResolvedTemplatePdfElements = {};
+
+  if (!pdfElements) {
+    return { elements, capabilities };
+  }
+
+  const tokenHelpers = createTokenHelpers({
+    templateId: options.template.id,
+    title: options.template.meta.title,
+    now: options.renderContext.now
+  });
+
+  const paginationHelpers = {
+    markerClass(name: PdfMarkerName) {
+      return MARKER_CLASS_MAP[name] ?? "";
+    },
+    markers: {
+      ...MARKER_CLASS_MAP
+    }
+  };
+
+  for (const elementName of PDF_TEMPLATE_ELEMENT_NAMES) {
+    const definition = pdfElements[elementName];
+    if (!definition) {
+      continue;
+    }
+
+    const resolvedElement: ResolvedTemplatePdfElements[PdfTemplateElementName] = {
+      template:
+        typeof definition.template === "string" &&
+        definition.template.trim().length > 0
+          ? definition.template
+          : undefined
+    };
+
+    const renderElement = definition.render;
+    if (typeof renderElement === "function") {
+      resolvedElement.render = async (
+        runtime?: TemplatePdfElementRenderRuntime
+      ) => {
+        const elementContext: TemplatePdfElementContext = {
+          element: elementName,
+          runId: options.renderContext.runId,
+          mode: options.renderContext.mode,
+          profile: options.renderContext.profile,
+          now: options.renderContext.now,
+          templateId: options.template.id,
+          template: options.template.meta,
+          payload: options.payload,
+          features: options.features,
+          headings: runtime?.headings ?? [],
+          tokens: tokenHelpers,
+          pagination: paginationHelpers
+        };
+
+        const output = await renderElement(elementContext);
+        if (typeof output === "undefined" || output === null) {
+          return undefined;
+        }
+        if (typeof output === "string") {
+          return output;
+        }
+        return options.adapter.renderFragment({
+          template: options.template,
+          value: output
+        });
+      };
+    }
+
+    elements[elementName] = resolvedElement;
+  }
+
+  return { elements, capabilities };
 }
 
 export class DFactoryRegistry {
@@ -301,6 +448,11 @@ export class DFactoryRegistry {
     return mergePdfTemplateConfig(template.module.pdf, undefined);
   }
 
+  getTemplateElementCapabilities(templateId: string): TemplatePdfElementCapabilities {
+    const template = this.getTemplate(templateId);
+    return createTemplatePdfElementCapabilities(template.module.pdfElements);
+  }
+
   getTemplateExamples(templateId: string): TemplateExample[] {
     const template = this.getTemplate(templateId);
     return [...(template.module.examples ?? [])];
@@ -358,6 +510,14 @@ export class DFactoryRegistry {
       profile: options?.profile,
       features
     });
+    const { elements: templatePdfElements, capabilities: templatePdfElementCapabilities } =
+      createResolvedTemplatePdfElements({
+        template,
+        adapter,
+        payload: parsedPayload.data,
+        renderContext,
+        features
+      });
 
     const renderStart = performance.now();
     const html = await adapter.renderHtml({
@@ -376,7 +536,9 @@ export class DFactoryRegistry {
         schemaValidationMs: validationEnd - validationStart,
         renderMs: renderEnd - renderStart
       },
-      templatePdfConfig: features
+      templatePdfConfig: features,
+      templatePdfElements,
+      templatePdfElementCapabilities
     };
   }
 

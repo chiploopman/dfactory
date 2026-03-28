@@ -47,6 +47,28 @@
 
 `POST /api/document/preflight` validates payload, applies template + feature pipeline, and returns diagnostics without returning a PDF blob.
 
+## Template feature capabilities
+
+`GET /api/templates/:id/features` returns resolved features plus first-class element capability metadata:
+
+```json
+{
+  "templateId": "invoice-reference",
+  "features": {
+    "toc": { "enabled": true }
+  },
+  "elementCapabilities": {
+    "toc": { "defined": true, "hasRender": true, "hasTemplate": false },
+    "header": { "defined": true, "hasRender": true, "hasTemplate": false },
+    "footer": { "defined": true, "hasRender": true, "hasTemplate": false },
+    "watermark": { "defined": true, "hasRender": true, "hasTemplate": false },
+    "pagination": { "defined": true, "hasRender": true, "hasTemplate": false }
+  },
+  "examples": [],
+  "plugins": ["@dfactory/pdf-feature-standard"]
+}
+```
+
 ## Source explorer response
 
 `GET /api/templates/:id/source` returns a recursive template-folder source manifest:

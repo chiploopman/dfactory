@@ -4,6 +4,14 @@ export type RenderMode = "html" | "pdf";
 export type PdfPageSize = "A4" | "Letter";
 export type PdfPaginationMode = "css" | "pagedjs";
 export type PdfMarkerName = "pageBreakBefore" | "keepWithNext" | "avoidBreak";
+export const PDF_TEMPLATE_ELEMENT_NAMES = [
+  "toc",
+  "header",
+  "footer",
+  "watermark",
+  "pagination"
+] as const;
+export type PdfTemplateElementName = (typeof PDF_TEMPLATE_ELEMENT_NAMES)[number];
 
 export interface TemplateMeta {
   id: string;
@@ -16,6 +24,27 @@ export interface TemplateMeta {
 
 export interface TemplateRenderHelpers {
   markerClass: (name: PdfMarkerName) => string;
+}
+
+export interface TemplateTocHeading {
+  id: string;
+  text: string;
+  level: number;
+}
+
+export interface TemplateTokenHelpers {
+  pageNumber: string;
+  totalPages: string;
+  date: string;
+  title: string;
+  templateId: string;
+  resolve: (extraTokens?: Record<string, string>) => Record<string, string>;
+  apply: (template: string, extraTokens?: Record<string, string>) => string;
+}
+
+export interface TemplatePaginationHelpers {
+  markerClass: (name: PdfMarkerName) => string;
+  markers: Record<PdfMarkerName, string>;
 }
 
 export interface PdfTemplatePageConfig {
@@ -107,6 +136,58 @@ export interface TemplateRenderContext {
   helpers: TemplateRenderHelpers;
 }
 
+export interface TemplatePdfElementContext<TPayload = unknown> {
+  element: PdfTemplateElementName;
+  runId: string;
+  mode: RenderMode;
+  profile?: string;
+  now: Date;
+  templateId: string;
+  template: TemplateMeta;
+  payload: TPayload;
+  features: PdfTemplateConfig;
+  headings: TemplateTocHeading[];
+  tokens: TemplateTokenHelpers;
+  pagination: TemplatePaginationHelpers;
+}
+
+export interface TemplatePdfElementDefinition<TPayload = unknown> {
+  render?: (
+    context: TemplatePdfElementContext<TPayload>
+  ) => unknown | Promise<unknown>;
+  template?: string;
+}
+
+export type TemplatePdfElements<TPayload = unknown> = Partial<
+  Record<PdfTemplateElementName, TemplatePdfElementDefinition<TPayload>>
+>;
+
+export interface TemplatePdfElementRenderRuntime {
+  headings?: TemplateTocHeading[];
+}
+
+export interface ResolvedTemplatePdfElement {
+  template?: string;
+  render?: (
+    context?: TemplatePdfElementRenderRuntime
+  ) => Promise<string | undefined>;
+}
+
+export type ResolvedTemplatePdfElements = Partial<
+  Record<PdfTemplateElementName, ResolvedTemplatePdfElement>
+>;
+
+export interface TemplatePdfElementCapability {
+  defined: boolean;
+  hasRender: boolean;
+  hasTemplate: boolean;
+}
+
+export type TemplatePdfElementCapabilities = Record<
+  PdfTemplateElementName,
+  TemplatePdfElementCapability
+>;
+
 export interface TemplateModule<TPayload = unknown> {
   meta: TemplateMeta;
   schema: ZodTypeAny;
@@ -116,6 +197,7 @@ export interface TemplateModule<TPayload = unknown> {
   ) => unknown | Promise<unknown>;
   pdf?: PdfTemplateConfig;
   examples?: TemplateExample<TPayload>[];
+  pdfElements?: TemplatePdfElements<TPayload>;
 }
 
 export interface LoadedTemplate {
@@ -199,9 +281,15 @@ export interface RenderContext {
   renderContext: TemplateRenderContext;
 }
 
+export interface RenderFragmentContext {
+  template: LoadedTemplate;
+  value: unknown;
+}
+
 export interface TemplateAdapter {
   framework: string;
   renderHtml: (context: RenderContext) => Promise<string>;
+  renderFragment: (context: RenderFragmentContext) => Promise<string>;
 }
 
 export interface DoctorCheckResult {
@@ -266,6 +354,8 @@ export interface RenderResult {
   html: string;
   diagnostics: RenderDiagnostics;
   templatePdfConfig?: PdfTemplateConfig;
+  templatePdfElements?: ResolvedTemplatePdfElements;
+  templatePdfElementCapabilities?: TemplatePdfElementCapabilities;
 }
 
 export type TemplatePayloadSchema = ZodTypeAny;

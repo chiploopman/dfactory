@@ -134,6 +134,30 @@ test("dev mode: catalog, payload edit, html/pdf preview, generate, dock panel be
   expect(generateResponse.ok()).toBeTruthy();
   expect(generateResponse.headers()["content-type"]).toContain("application/pdf");
 
+  await expect(page.locator("[data-template-id='invoice-reference']")).toBeVisible();
+  await page.locator("[data-template-id='invoice-reference']").click();
+  await expect(page.getByTestId("topbar-preview-button")).toBeEnabled();
+
+  const referenceFeaturesResponse = await page.request.get(
+    `${apiBase}/templates/invoice-reference/features`,
+  );
+  expect(referenceFeaturesResponse.ok()).toBeTruthy();
+  const referenceFeaturesBody = (await referenceFeaturesResponse.json()) as {
+    features: {
+      toc?: {
+        enabled?: boolean;
+      };
+    };
+    elementCapabilities: Record<
+      string,
+      { defined: boolean; hasRender: boolean; hasTemplate: boolean }
+    >;
+  };
+  expect(referenceFeaturesBody.features.toc?.enabled).toBe(true);
+  expect(referenceFeaturesBody.elementCapabilities.toc.hasRender).toBe(true);
+  expect(referenceFeaturesBody.elementCapabilities.header.hasRender).toBe(true);
+  expect(referenceFeaturesBody.elementCapabilities.pagination.hasRender).toBe(true);
+
   await expect(page.getByTestId("bottom-dock")).toBeVisible();
   await expect(page.getByTestId("bottom-dock")).toHaveAttribute("data-sticky", "true");
   await expect(page.getByTestId("bottom-panel")).toBeVisible();
@@ -266,10 +290,14 @@ test("dev mode: catalog, payload edit, html/pdf preview, generate, dock panel be
   }
   await expect(page.getByTestId("source-view").locator(".cm-editor")).toBeVisible();
   await expect(page.getByTestId("source-view")).toContainText("defineTemplate");
+  await page.getByRole("button", { name: "components" }).click();
 
   if (testInfo.project.name.startsWith("vue-")) {
-    await page.getByRole("button", { name: "InvoiceTemplate.vue" }).click();
+    await page.getByRole("button", { name: "InvoiceReferenceDocument.vue" }).click();
     await expect(page.getByTestId("source-view")).toContainText("<template>");
+  } else {
+    await page.getByRole("button", { name: "InvoiceReferenceDocument.tsx" }).click();
+    await expect(page.getByTestId("source-view")).toContainText("InvoiceReferenceDocument");
   }
 
   await page.getByTestId("dock-tab-playground").click();

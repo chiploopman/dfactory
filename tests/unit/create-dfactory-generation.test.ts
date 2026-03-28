@@ -38,6 +38,10 @@ describe("create-dfactory generation", () => {
 
     const config = await fs.readFile(path.join(cwd, "dfactory.config.ts"), "utf8");
     const template = await fs.readFile(path.join(cwd, "src/templates/invoice/template.tsx"), "utf8");
+    const referenceTemplate = await fs.readFile(
+      path.join(cwd, "src/templates/invoice-reference/template.tsx"),
+      "utf8"
+    );
     const packageJson = JSON.parse(await fs.readFile(path.join(cwd, "package.json"), "utf8")) as {
       dependencies?: Record<string, string>;
     };
@@ -47,6 +51,8 @@ describe("create-dfactory generation", () => {
     expect(config).toContain("\"@dfactory/pdf-feature-standard\"");
     expect(template).toContain("framework: \"react\"");
     expect(template).toContain("defineTemplate");
+    expect(referenceTemplate).toContain("id: \"invoice-reference\"");
+    expect(referenceTemplate).toContain("pdfElements");
     expect(packageJson.dependencies?.["@dfactory/framework-react"]).toBe("latest");
     expect(packageJson.dependencies?.["@dfactory/module-loader-bundle"]).toBe("latest");
     expect(packageJson.dependencies?.["@dfactory/pdf-feature-standard"]).toBe("latest");
@@ -77,7 +83,15 @@ describe("create-dfactory generation", () => {
 
     const config = await fs.readFile(path.join(cwd, "dfactory.config.ts"), "utf8");
     const template = await fs.readFile(path.join(cwd, "src/templates/invoice/template.ts"), "utf8");
+    const referenceTemplate = await fs.readFile(
+      path.join(cwd, "src/templates/invoice-reference/template.ts"),
+      "utf8"
+    );
     const sfc = await fs.readFile(path.join(cwd, "src/templates/invoice/InvoiceTemplate.vue"), "utf8");
+    const referenceSfc = await fs.readFile(
+      path.join(cwd, "src/templates/invoice-reference/components/InvoiceReferenceDocument.vue"),
+      "utf8"
+    );
     const packageJson = JSON.parse(await fs.readFile(path.join(cwd, "package.json"), "utf8")) as {
       dependencies?: Record<string, string>;
     };
@@ -87,7 +101,10 @@ describe("create-dfactory generation", () => {
     expect(config).toContain("\"@dfactory/pdf-feature-standard\"");
     expect(template).toContain("framework: \"vue\"");
     expect(template).toContain("defineTemplate");
+    expect(referenceTemplate).toContain("id: \"invoice-reference\"");
+    expect(referenceTemplate).toContain("pdfElements");
     expect(sfc).toContain("<template>");
+    expect(referenceSfc).toContain("<template>");
     expect(packageJson.dependencies?.["@dfactory/framework-vue"]).toBe("latest");
     expect(packageJson.dependencies?.["@dfactory/module-loader-vite"]).toBe("latest");
     expect(packageJson.dependencies?.["@dfactory/pdf-feature-standard"]).toBe("latest");

@@ -7,7 +7,9 @@ import type {
   DoctorCheckResult,
   PdfTemplateConfig,
   RenderMode,
+  ResolvedTemplatePdfElements,
   TemplateMeta,
+  TemplatePdfElementCapabilities,
   TemplatePdfFeatureOverrides
 } from "@dfactory/core";
 
@@ -30,6 +32,8 @@ interface PdfFeatureBaseContext {
   templateFeatures?: PdfTemplateConfig;
   featuresOverride?: TemplatePdfFeatureOverrides;
   resolvedFeatures: PdfTemplateConfig;
+  templatePdfElements?: ResolvedTemplatePdfElements;
+  templatePdfElementCapabilities?: TemplatePdfElementCapabilities;
 }
 
 export interface PdfFeatureHtmlContext extends PdfFeatureBaseContext {
@@ -62,6 +66,8 @@ export interface PdfRenderOptions {
   payload?: unknown;
   templateFeatures?: PdfTemplateConfig;
   features?: TemplatePdfFeatureOverrides;
+  templatePdfElements?: ResolvedTemplatePdfElements;
+  templatePdfElementCapabilities?: TemplatePdfElementCapabilities;
 }
 
 export interface PdfRenderResult {
@@ -401,6 +407,8 @@ export class PlaywrightPdfRenderer implements PdfRenderer {
       templateFeatures: options?.templateFeatures,
       featuresOverride: options?.features,
       resolvedFeatures,
+      templatePdfElements: options?.templatePdfElements,
+      templatePdfElementCapabilities: options?.templatePdfElementCapabilities,
       html,
       diagnostics: [],
       options: {}
@@ -450,6 +458,8 @@ export class PlaywrightPdfRenderer implements PdfRenderer {
         templateFeatures: options?.templateFeatures,
         featuresOverride: options?.features,
         resolvedFeatures: preflight.resolvedFeatures,
+        templatePdfElements: options?.templatePdfElements,
+        templatePdfElementCapabilities: options?.templatePdfElementCapabilities,
         html: preflight.html,
         diagnostics: [...preflight.diagnostics],
         options: effectivePdfOptions

@@ -229,10 +229,12 @@ export async function createDFactoryServer(options: DFactoryServerOptions) {
       const features = renderer.resolveFeatures({
         templateFeatures: template.module.pdf
       });
+      const elementCapabilities = registry.getTemplateElementCapabilities(request.params.id);
 
       return {
         templateId: request.params.id,
         features,
+        elementCapabilities,
         examples: template.module.examples ?? [],
         plugins: pdfFeaturePlugins.map((plugin) => plugin.id)
       };
@@ -301,7 +303,9 @@ export async function createDFactoryServer(options: DFactoryServerOptions) {
         profile: parsed.data.options?.profile,
         payload: parsed.data.payload,
         templateFeatures: rendered.templatePdfConfig,
-        features: parsed.data.options?.features as TemplatePdfFeatureOverrides | undefined
+        features: parsed.data.options?.features as TemplatePdfFeatureOverrides | undefined,
+        templatePdfElements: rendered.templatePdfElements,
+        templatePdfElementCapabilities: rendered.templatePdfElementCapabilities
       });
 
       return {
@@ -354,7 +358,9 @@ export async function createDFactoryServer(options: DFactoryServerOptions) {
           profile: parsed.data.options?.profile,
           payload: parsed.data.payload,
           templateFeatures: rendered.templatePdfConfig,
-          features: parsed.data.options?.features as TemplatePdfFeatureOverrides | undefined
+          features: parsed.data.options?.features as TemplatePdfFeatureOverrides | undefined,
+          templatePdfElements: rendered.templatePdfElements,
+          templatePdfElementCapabilities: rendered.templatePdfElementCapabilities
         });
         return {
           mode: "html",
@@ -376,7 +382,9 @@ export async function createDFactoryServer(options: DFactoryServerOptions) {
         profile: parsed.data.options?.profile,
         payload: parsed.data.payload,
         templateFeatures: rendered.templatePdfConfig,
-        features: parsed.data.options?.features as TemplatePdfFeatureOverrides | undefined
+        features: parsed.data.options?.features as TemplatePdfFeatureOverrides | undefined,
+        templatePdfElements: rendered.templatePdfElements,
+        templatePdfElementCapabilities: rendered.templatePdfElementCapabilities
       });
 
       reply.header("content-type", "application/pdf");
@@ -434,7 +442,9 @@ export async function createDFactoryServer(options: DFactoryServerOptions) {
         profile: parsed.data.options?.profile,
         payload: parsed.data.payload,
         templateFeatures: rendered.templatePdfConfig,
-        features: parsed.data.options?.features as TemplatePdfFeatureOverrides | undefined
+        features: parsed.data.options?.features as TemplatePdfFeatureOverrides | undefined,
+        templatePdfElements: rendered.templatePdfElements,
+        templatePdfElementCapabilities: rendered.templatePdfElementCapabilities
       });
 
       reply.header("content-type", "application/pdf");

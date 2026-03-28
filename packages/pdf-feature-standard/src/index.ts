@@ -1,7 +1,10 @@
 import { Buffer } from "node:buffer";
 
 import { load as loadHtml } from "cheerio";
-import type { PdfTemplateConfig } from "@dfactory/core";
+import type {
+  PdfTemplateConfig,
+  TemplateTocHeading
+} from "@dfactory/core";
 import type {
   PdfFeatureDiagnostic,
   PdfFeatureHtmlContext,
@@ -18,22 +21,14 @@ const DATA_URL_PATTERN = /^data:[^;]+;base64,/i;
 
 const assetCache = new Map<string, string>();
 
-function ensureToc(html: string, context: PdfFeatureHtmlContext): string {
-  if (!context.resolvedFeatures.toc?.enabled) {
-    return html;
-  }
-
-  const depth = context.resolvedFeatures.toc.maxDepth ?? 3;
-  const title = context.resolvedFeatures.toc.title ?? "Table of Contents";
-
+function collectHeadings(html: string, depth: number): {
+  html: string;
+  headings: TemplateTocHeading[];
+} {
   const $ = loadHtml(html);
   const headingSelector = Array.from({ length: depth }, (_, index) => `h${index + 1}`).join(", ");
-  const headings = $(headingSelector).toArray();
-  if (headings.length === 0) {
-    return html;
-  }
-
-  const tocItems = headings.map((heading, index) => {
+  const headingNodes = $(headingSelector).toArray();
+  const headings: TemplateTocHeading[] = headingNodes.map((heading, index) => {
     const headingTag = ($(heading).prop("tagName") ?? "H1").toString().toLowerCase();
     const level = Number(headingTag.slice(1));
     const text = $(heading).text().trim();
@@ -46,17 +41,137 @@ function ensureToc(html: string, context: PdfFeatureHtmlContext): string {
     return { level, text, id };
   });
 
-  const listItems = tocItems
+  return {
+    html: $.html(),
+    headings
+  };
+}
+
+function createDefaultTocMarkup(options: {
+  title: string;
+  headings: TemplateTocHeading[];
+}): string {
+  const listItems = options.headings
     .map((item) => {
       return `<li class="df-toc-item df-toc-level-${item.level}"><a href="#${item.id}">${item.text}</a></li>`;
     })
     .join("");
 
-  const tocHtml = `<nav class="df-toc" aria-label="${title}"><h2>${title}</h2><ol>${listItems}</ol></nav>`;
-  const body = $("body");
-  body.prepend(tocHtml);
+  return `<nav class="df-toc" aria-label="${options.title}"><h2>${options.title}</h2><ol>${listItems}</ol></nav>`;
+}
 
+function prependBodyHtml(html: string, fragment: string): string {
+  const $ = loadHtml(html);
+  $("body").prepend(fragment);
   return $.html();
+}
+
+function appendBodyHtml(html: string, fragment: string): string {
+  const $ = loadHtml(html);
+  $("body").append(fragment);
+  return $.html();
+}
+
+async function resolveElementMarkup(
+  context: PdfFeatureHtmlContext,
+  element: "toc" | "header" | "footer" | "watermark" | "pagination",
+  options?: { headings?: TemplateTocHeading[] }
+): Promise<string | undefined> {
+  const definition = context.templatePdfElements?.[element];
+  if (!definition) {
+    return undefined;
+  }
+  if (definition.render) {
+    const rendered = await definition.render({
+      headings: options?.headings
+    });
+    if (typeof rendered === "string" && rendered.trim().length > 0) {
+      return rendered;
+    }
+    return undefined;
+  }
+  if (typeof definition.template === "string" && definition.template.trim().length > 0) {
+    return definition.template;
+  }
+  return undefined;
+}
+
+async function applyToc(context: PdfFeatureHtmlContext): Promise<void> {
+  const tocEnabled = context.resolvedFeatures.toc?.enabled ?? false;
+  const depth = context.resolvedFeatures.toc?.maxDepth ?? 3;
+  const title = context.resolvedFeatures.toc?.title ?? "Table of Contents";
+
+  const collected = collectHeadings(context.html, depth);
+  context.html = collected.html;
+
+  const tocFromElement = await resolveElementMarkup(context, "toc", {
+    headings: collected.headings
+  });
+  if (tocFromElement) {
+    context.html = prependBodyHtml(context.html, tocFromElement);
+    context.diagnostics.push({
+      pluginId: "@dfactory/pdf-feature-standard",
+      level: "info",
+      code: "toc.element",
+      message: "Rendered TOC using first-class template element.",
+      details: {
+        headings: collected.headings.length
+      }
+    });
+    return;
+  }
+
+  if (!tocEnabled || collected.headings.length === 0) {
+    return;
+  }
+
+  context.html = prependBodyHtml(
+    context.html,
+    createDefaultTocMarkup({
+      title,
+      headings: collected.headings
+    })
+  );
+}
+
+async function applyWatermarkElement(context: PdfFeatureHtmlContext): Promise<void> {
+  const watermarkMarkup = await resolveElementMarkup(context, "watermark");
+  if (!watermarkMarkup) {
+    return;
+  }
+
+  context.html = appendBodyHtml(
+    context.html,
+    `<div class="df-watermark-layer" data-dfactory-element="watermark">${watermarkMarkup}</div>`
+  );
+  context.resolvedFeatures.watermark = {
+    ...context.resolvedFeatures.watermark,
+    text: undefined
+  };
+  context.diagnostics.push({
+    pluginId: "@dfactory/pdf-feature-standard",
+    level: "info",
+    code: "watermark.element",
+    message: "Rendered watermark using first-class template element."
+  });
+}
+
+async function applyPaginationElement(context: PdfFeatureHtmlContext): Promise<void> {
+  const paginationMarkup = await resolveElementMarkup(context, "pagination");
+  if (!paginationMarkup) {
+    return;
+  }
+
+  context.html = appendBodyHtml(
+    context.html,
+    `<div class="df-pagination-layer" data-dfactory-element="pagination">${paginationMarkup}</div>`
+  );
+  context.diagnostics.push({
+    pluginId: "@dfactory/pdf-feature-standard",
+    level: "info",
+    code: "pagination.element",
+    message: "Rendered pagination using first-class template element."
+  });
 }
 
 function buildFeatureStyles(features: PdfTemplateConfig): string {
@@ -68,7 +183,9 @@ function buildFeatureStyles(features: PdfTemplateConfig): string {
     `.df-toc h2 { margin: 0 0 12px; font-size: 16px; }`,
     `.df-toc ol { margin: 0; padding: 0 0 0 16px; }`,
     `.df-toc-item { margin: 4px 0; }`,
-    `.df-toc-item a { color: inherit; text-decoration: none; }`
+    `.df-toc-item a { color: inherit; text-decoration: none; }`,
+    `.df-watermark-layer { position: fixed; inset: 0; pointer-events: none; display: flex; align-items: center; justify-content: center; z-index: 9999; }`,
+    `.df-pagination-layer { position: fixed; left: 0; right: 0; bottom: 0; pointer-events: none; z-index: 9998; }`
   ];
 
   const page = features.page;
@@ -195,7 +312,23 @@ async function embedAssets(html: string, context: PdfFeatureHtmlContext): Promis
   return $.html();
 }
 
-function applyDefaultHeaderFooter(context: PdfFeatureHtmlContext): void {
+async function applyHeaderFooter(context: PdfFeatureHtmlContext): Promise<void> {
+  const existing = context.resolvedFeatures.headerFooter ?? {};
+  const renderedHeader = await resolveElementMarkup(context, "header");
+  const renderedFooter = await resolveElementMarkup(context, "footer");
+
+  const hasElementHeader = typeof renderedHeader === "string" && renderedHeader.length > 0;
+  const hasElementFooter = typeof renderedFooter === "string" && renderedFooter.length > 0;
+
+  if (hasElementHeader || hasElementFooter || existing.enabled) {
+    context.resolvedFeatures.headerFooter = {
+      ...existing,
+      enabled: true,
+      headerTemplate: hasElementHeader ? renderedHeader : existing.headerTemplate,
+      footerTemplate: hasElementFooter ? renderedFooter : existing.footerTemplate
+    };
+  }
+
   const headerFooter = context.resolvedFeatures.headerFooter;
   if (!headerFooter?.enabled) {
     return;
@@ -222,11 +355,13 @@ function addMetadataDefaults(context: PdfFeatureHtmlContext): void {
 export const pdfFeaturePlugin: PdfFeaturePlugin = {
   id: "@dfactory/pdf-feature-standard",
   async htmlPre(context) {
-    applyDefaultHeaderFooter(context);
+    await applyHeaderFooter(context);
     addMetadataDefaults(context);
     const styles = buildFeatureStyles(context.resolvedFeatures);
     context.html = injectStyles(context.html, styles);
-    context.html = ensureToc(context.html, context);
+    await applyToc(context);
+    await applyPaginationElement(context);
+    await applyWatermarkElement(context);
     return context.html;
   },
   async htmlPost(context) {

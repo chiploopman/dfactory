@@ -12,6 +12,9 @@ const dummyAdapter: TemplateAdapter = {
   framework: "react",
   async renderHtml() {
     return "";
+  },
+  async renderFragment() {
+    return "";
   }
 };
 
@@ -87,4 +90,3 @@ describe("runtime resolver", () => {
     ).rejects.toThrow("does not support module transforms");
   });
 });
-

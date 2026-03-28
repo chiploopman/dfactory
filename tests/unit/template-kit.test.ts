@@ -35,6 +35,16 @@ describe("template-kit", () => {
           }
         }
       ],
+      pdfElements: {
+        header: {
+          template: "<div>{{title}}</div>"
+        },
+        footer: {
+          render(context) {
+            return `<footer>${context.tokens.pageNumber}/${context.tokens.totalPages}</footer>`;
+          }
+        }
+      },
       render(payload, context) {
         return `<main class="${context?.helpers.markerClass("avoidBreak") ?? ""}">Hi ${payload.name}</main>`;
       }
@@ -42,6 +52,8 @@ describe("template-kit", () => {
 
     expect(template.meta.title).toBe("Welcome");
     expect(template.pdf?.toc?.enabled).toBe(true);
+    expect(template.pdfElements?.header?.template).toContain("{{title}}");
+    expect(typeof template.pdfElements?.footer?.render).toBe("function");
     expect(template.examples?.[0]?.name).toBe("default");
     const result = schema.safeParse({ name: "Alice" });
     expect(result.success).toBe(true);

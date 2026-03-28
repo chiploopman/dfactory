@@ -25,5 +25,14 @@ describe("vue framework plugin", () => {
     expect(html.startsWith("<!doctype html>")).toBe(true);
     expect(html).toContain("<main>Hello Alice</main>");
   });
-});
 
+  it("renders vue fragments without html document envelope", async () => {
+    const adapter = await frameworkVuePlugin.createAdapter();
+    const html = await adapter.renderFragment({
+      template: {} as never,
+      value: "Fragment body"
+    });
+
+    expect(html).toBe("Fragment body");
+  });
+});

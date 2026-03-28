@@ -102,6 +102,10 @@ export async function fetchTemplateSource(
 export async function fetchTemplateFeatures(templateId: string): Promise<{
   templateId: string;
   features: Record<string, unknown>;
+  elementCapabilities: Record<
+    string,
+    { defined: boolean; hasRender: boolean; hasTemplate: boolean }
+  >;
   examples: Array<{ name: string; payload: unknown; description?: string; profile?: string }>;
   plugins: string[];
 }> {
@@ -113,6 +117,10 @@ export async function fetchTemplateFeatures(templateId: string): Promise<{
   return response.json() as Promise<{
     templateId: string;
     features: Record<string, unknown>;
+    elementCapabilities: Record<
+      string,
+      { defined: boolean; hasRender: boolean; hasTemplate: boolean }
+    >;
     examples: Array<{ name: string; payload: unknown; description?: string; profile?: string }>;
     plugins: string[];
   }>;

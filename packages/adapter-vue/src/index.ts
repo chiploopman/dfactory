@@ -40,6 +40,21 @@ function normalizeRenderedOutput(value: RenderedOutput): VNode {
   return h("main", String(value));
 }
 
+async function renderVueFragment(value: RenderedOutput): Promise<string> {
+  if (value === null || typeof value === "undefined" || typeof value === "boolean") {
+    return "";
+  }
+
+  if (typeof value === "string" || typeof value === "number") {
+    return String(value);
+  }
+
+  const app = createSSRApp({
+    render: () => normalizeRenderedOutput(value)
+  });
+  return renderToString(app);
+}
+
 function createVueTransformConfig(): ModuleTransformConfig {
   return {
     aliases: [
@@ -71,6 +86,9 @@ export const frameworkVuePlugin: DFactoryFrameworkPlugin = {
 
         const html = await renderToString(app);
         return `<!doctype html><html><head><meta charset=\"utf-8\" /><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" /></head><body>${html}</body></html>`;
+      },
+      async renderFragment({ value }) {
+        return renderVueFragment(value as RenderedOutput);
       }
     };
   },

@@ -12,6 +12,7 @@ describe("framework plugin conformance", () => {
     const adapter = await frameworkReactPlugin.createAdapter();
     expect(adapter.framework).toBe("react");
     expect(typeof adapter.renderHtml).toBe("function");
+    expect(typeof adapter.renderFragment).toBe("function");
   });
 
   it("vue plugin shape is valid", async () => {
@@ -23,6 +24,6 @@ describe("framework plugin conformance", () => {
     const adapter = await frameworkVuePlugin.createAdapter();
     expect(adapter.framework).toBe("vue");
     expect(typeof adapter.renderHtml).toBe("function");
+    expect(typeof adapter.renderFragment).toBe("function");
   });
 });
-

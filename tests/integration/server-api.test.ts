@@ -50,6 +50,21 @@ export const schema = {
 export const pdf = {
   toc: { enabled: true, maxDepth: 2, title: "Contents" }
 };
+export const pdfElements = {
+  header: {
+    template: "<div>Header {{title}}</div>"
+  },
+  footer: {
+    render(context: { tokens: { pageNumber: string; totalPages: string } }) {
+      return "<div>Footer " + context.tokens.pageNumber + " / " + context.tokens.totalPages + "</div>";
+    }
+  },
+  toc: {
+    render(context: { headings: Array<{ text: string }> }) {
+      return "<nav data-first-class-toc='true'>" + (context.headings[0]?.text ?? "") + "</nav>";
+    }
+  }
+};
 export function render(payload: { customerName: string }) {
   return "Hello " + payload.customerName;
 }
@@ -146,10 +161,17 @@ export function render(payload: { customerName: string }) {
           enabled?: boolean;
         };
       };
+      elementCapabilities: Record<
+        string,
+        { defined: boolean; hasRender: boolean; hasTemplate: boolean }
+      >;
       plugins: string[];
     };
 
     expect(body.features.toc?.enabled).toBe(true);
+    expect(body.elementCapabilities.header.hasTemplate).toBe(true);
+    expect(body.elementCapabilities.footer.hasRender).toBe(true);
+    expect(body.elementCapabilities.toc.defined).toBe(true);
     expect(body.plugins).toContain("@dfactory/pdf-feature-standard");
   });
 

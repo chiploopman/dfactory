@@ -6,6 +6,11 @@ Currently supported template frameworks: React and Vue.
 
 Framework runtime wiring is plugin-based (`config.plugins`) with explicit or auto-selected module loaders (`config.moduleLoader`).
 
+Starter projects include:
+
+- `invoice` (simple quick-start template)
+- `invoice-reference` (advanced multi-file reference with first-class TOC/header/footer/watermark/pagination elements)
+
 ## Quick start
 
 ```bash
