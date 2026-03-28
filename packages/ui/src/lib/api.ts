@@ -1,4 +1,10 @@
-import type { GenerateHtmlResponse, PreviewHtmlResponse, RuntimeConfig, TemplateSummary } from "@/types/api";
+import type {
+  GenerateHtmlResponse,
+  PreviewHtmlResponse,
+  RuntimeConfig,
+  TemplateSourceManifest,
+  TemplateSummary,
+} from "@/types/api";
 
 function resolveApiBase(): string {
   if (import.meta.env.VITE_DFACTORY_API_URL) {
@@ -82,14 +88,15 @@ export async function fetchTemplateSchema(templateId: string): Promise<unknown> 
   return body.schema;
 }
 
-export async function fetchTemplateSource(templateId: string): Promise<string> {
+export async function fetchTemplateSource(
+  templateId: string,
+): Promise<TemplateSourceManifest> {
   const response = await fetch(`${API_BASE}/templates/${templateId}/source`);
   if (!response.ok) {
     throw new Error(`Failed to fetch source (${response.status}).`);
   }
 
-  const body = (await response.json()) as { source: string };
-  return body.source;
+  return response.json() as Promise<TemplateSourceManifest>;
 }
 
 export async function fetchTemplateFeatures(templateId: string): Promise<{

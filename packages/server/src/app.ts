@@ -47,6 +47,33 @@ const preflightRequestSchema = z.object({
     .optional()
 });
 
+const sourceFileResponseSchema = {
+  type: "object",
+  required: ["path", "status", "bytes", "entry"],
+  properties: {
+    path: { type: "string" },
+    status: { type: "string", enum: ["ready", "skipped"] },
+    content: { type: "string" },
+    skipReason: { type: "string", enum: ["binary", "tooLarge", "unreadable"] },
+    bytes: { type: "number" },
+    entry: { type: "boolean" }
+  }
+} as const;
+
+const sourceManifestResponseSchema = {
+  type: "object",
+  required: ["templateId", "root", "entryFile", "files"],
+  properties: {
+    templateId: { type: "string" },
+    root: { type: "string" },
+    entryFile: { type: "string" },
+    files: {
+      type: "array",
+      items: sourceFileResponseSchema
+    }
+  }
+} as const;
+
 function isPayloadValidationError(error: unknown): error is Error {
   return error instanceof Error && error.message.startsWith("Payload validation failed:");
 }
@@ -217,24 +244,33 @@ export async function createDFactoryServer(options: DFactoryServerOptions) {
     }
   });
 
-  app.get<{ Params: { id: string } }>("/api/templates/:id/source", async (request, reply) => {
-    if (isProduction && !config.ui.sourceInProd) {
-      return reply.code(403).send({
-        error: "Forbidden",
-        message: "Source view is disabled in production."
-      });
-    }
+  app.get<{ Params: { id: string } }>(
+    "/api/templates/:id/source",
+    {
+      schema: {
+        response: {
+          200: sourceManifestResponseSchema
+        }
+      }
+    },
+    async (request, reply) => {
+      if (isProduction && !config.ui.sourceInProd) {
+        return reply.code(403).send({
+          error: "Forbidden",
+          message: "Source view is disabled in production."
+        });
+      }
 
-    try {
-      const source = await registry.getTemplateSource(request.params.id);
-      return { templateId: request.params.id, source };
-    } catch (error) {
-      return reply.code(404).send({
-        error: "Template not found",
-        message: error instanceof Error ? error.message : "Unknown error"
-      });
+      try {
+        return await registry.getTemplateSource(request.params.id);
+      } catch (error) {
+        return reply.code(404).send({
+          error: "Template not found",
+          message: error instanceof Error ? error.message : "Unknown error"
+        });
+      }
     }
-  });
+  );
 
   app.post("/api/document/preflight", async (request, reply) => {
     const parsed = preflightRequestSchema.safeParse(request.body);

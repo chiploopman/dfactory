@@ -47,6 +47,34 @@
 
 `POST /api/document/preflight` validates payload, applies template + feature pipeline, and returns diagnostics without returning a PDF blob.
 
+## Source explorer response
+
+`GET /api/templates/:id/source` returns a recursive template-folder source manifest:
+
+```json
+{
+  "templateId": "invoice",
+  "root": "src/templates/invoice",
+  "entryFile": "template.tsx",
+  "files": [
+    {
+      "path": "template.tsx",
+      "status": "ready",
+      "content": "export const meta = ...",
+      "bytes": 1342,
+      "entry": true
+    },
+    {
+      "path": "assets/logo.bin",
+      "status": "skipped",
+      "skipReason": "binary",
+      "bytes": 24310,
+      "entry": false
+    }
+  ]
+}
+```
+
 ## Security
 
 If `auth.apiKeys` is configured, requests must include:

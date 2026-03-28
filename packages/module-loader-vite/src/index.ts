@@ -34,9 +34,7 @@ class ViteTemplateModuleLoader implements TemplateModuleLoader {
         middlewareMode: true,
         hmr: false,
         ws: false,
-        watch: {
-          ignored: ["**/*"]
-        }
+        watch: null
       },
       resolve: {
         alias: transformConfig.aliases.map(mapAlias)

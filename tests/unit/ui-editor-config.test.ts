@@ -16,7 +16,12 @@ describe("editor config helpers", () => {
   })
 
   it("falls back to plaintext for unknown or missing source path", () => {
-    expect(inferSourceLanguageFromPath("/tmp/template.vue")).toBe("plaintext")
+    expect(inferSourceLanguageFromPath("/tmp/template.vue")).toBe("html")
+    expect(inferSourceLanguageFromPath("/tmp/template.html")).toBe("html")
+    expect(inferSourceLanguageFromPath("/tmp/template.css")).toBe("css")
+    expect(inferSourceLanguageFromPath("/tmp/template.scss")).toBe("css")
+    expect(inferSourceLanguageFromPath("/tmp/template.md")).toBe("markdown")
+    expect(inferSourceLanguageFromPath("/tmp/template.json")).toBe("json")
     expect(inferSourceLanguageFromPath("template")).toBe("plaintext")
     expect(inferSourceLanguageFromPath()).toBe("plaintext")
   })

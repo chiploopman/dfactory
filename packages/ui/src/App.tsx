@@ -14,6 +14,7 @@ import {
 
 import { TemplateCatalog } from "@/components/template-catalog"
 import { Topbar } from "@/components/topbar"
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -41,6 +42,11 @@ import { Separator } from "@/components/ui/separator"
 import { Spinner } from "@/components/ui/spinner"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
+import {
   fetchRuntime,
   fetchTemplateSchema,
   fetchTemplateFeatures,
@@ -52,11 +58,14 @@ import {
   type RenderMode,
 } from "@/lib/api"
 import { getInspectorEditorConfig } from "@/lib/editor-config"
+import { buildSourceTabLabels } from "@/lib/source-tab-labels"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
 import type {
   PreviewHtmlResponse,
   RuntimeConfig,
+  TemplateSourceFile,
+  TemplateSourceManifest,
   TemplateSummary,
 } from "@/types/api"
 
@@ -82,12 +91,44 @@ function pretty(value: unknown): string {
   return JSON.stringify(value, null, 2)
 }
 
+function resolveInitialSourceFilePath(
+  manifest: TemplateSourceManifest,
+): string | undefined {
+  const entryReadyFile = manifest.files.find(
+    (file) => file.path === manifest.entryFile && file.status === "ready",
+  )
+  if (entryReadyFile) {
+    return entryReadyFile.path
+  }
+
+  const firstReadyFile = manifest.files.find((file) => file.status === "ready")
+  if (firstReadyFile) {
+    return firstReadyFile.path
+  }
+
+  return manifest.files[0]?.path
+}
+
+function formatSourceSkipReason(reason?: TemplateSourceFile["skipReason"]): string {
+  switch (reason) {
+    case "binary":
+      return "Binary file is not previewable."
+    case "tooLarge":
+      return "File is larger than the source preview limit."
+    case "unreadable":
+      return "File could not be read from disk."
+    default:
+      return "File is not available for preview."
+  }
+}
+
 export default function App() {
   const [templates, setTemplates] = useState<TemplateSummary[]>([])
   const [selectedId, setSelectedId] = useState<string>()
   const [schemaJson, setSchemaJson] = useState<string>("{}")
   const [featuresJson, setFeaturesJson] = useState<string>("{}")
-  const [sourceCode, setSourceCode] = useState<string>("// Source unavailable")
+  const [sourceManifest, setSourceManifest] = useState<TemplateSourceManifest>()
+  const [activeSourceFilePath, setActiveSourceFilePath] = useState<string>()
   const [previewHtml, setPreviewHtml] = useState<string>()
   const [previewPdfUrl, setPreviewPdfUrl] = useState<string>()
   const [payloadText, setPayloadText] = useState<string>(
@@ -114,6 +155,34 @@ export default function App() {
     () => templates.find((template) => template.id === selectedId),
     [templates, selectedId],
   )
+  const selectedSourceFile = useMemo(() => {
+    if (!sourceManifest || sourceManifest.files.length === 0) {
+      return undefined
+    }
+
+    if (activeSourceFilePath) {
+      const byPath = sourceManifest.files.find(
+        (file) => file.path === activeSourceFilePath,
+      )
+      if (byPath) {
+        return byPath
+      }
+    }
+
+    const fallbackPath = resolveInitialSourceFilePath(sourceManifest)
+    return sourceManifest.files.find((file) => file.path === fallbackPath)
+  }, [activeSourceFilePath, sourceManifest])
+  const sourceTabLabelMap = useMemo(() => {
+    if (!sourceManifest || sourceManifest.files.length === 0) {
+      return new Map<string, string>()
+    }
+
+    return new Map(
+      buildSourceTabLabels(sourceManifest.files.map((file) => file.path)).map(
+        (item) => [item.path, item.label],
+      ),
+    )
+  }, [sourceManifest])
 
   const sourceEnabled = runtime
     ? !runtime.isProduction || runtime.ui.sourceInProd
@@ -179,12 +248,15 @@ export default function App() {
     if (sourceEnabled) {
       try {
         const source = await fetchTemplateSource(templateId)
-        setSourceCode(source)
+        setSourceManifest(source)
+        setActiveSourceFilePath(resolveInitialSourceFilePath(source))
       } catch {
-        setSourceCode("// Source disabled or unavailable")
+        setSourceManifest(undefined)
+        setActiveSourceFilePath(undefined)
       }
     } else {
-      setSourceCode("// Source disabled in production")
+      setSourceManifest(undefined)
+      setActiveSourceFilePath(undefined)
     }
   }
 
@@ -217,6 +289,22 @@ export default function App() {
       setActivePanelTab(panelTabs[0]?.id ?? "payload")
     }
   }, [panelTabs, activePanelTab])
+
+  useEffect(() => {
+    if (!sourceManifest || sourceManifest.files.length === 0) {
+      setActiveSourceFilePath(undefined)
+      return
+    }
+
+    if (
+      activeSourceFilePath &&
+      sourceManifest.files.some((file) => file.path === activeSourceFilePath)
+    ) {
+      return
+    }
+
+    setActiveSourceFilePath(resolveInitialSourceFilePath(sourceManifest))
+  }, [activeSourceFilePath, sourceManifest])
 
   useEffect(() => {
     return () => {
@@ -426,15 +514,107 @@ export default function App() {
         ) : null}
 
         {activePanel.id === "source" ? (
-          <CodeEditor
-            value={sourceCode}
-            config={getInspectorEditorConfig({
-              panel: "source",
-              sourceFilePath: selectedTemplate?.filePath,
-            })}
-            className="h-full"
-            data-testid="source-view"
-          />
+          sourceManifest && sourceManifest.files.length > 0 ? (
+            <Tabs
+              value={selectedSourceFile?.path}
+              onValueChange={setActiveSourceFilePath}
+              className="h-full gap-0"
+            >
+              <div
+                className="sticky top-0 z-10 -mx-1 border-b border-border/80 bg-background/95 px-1 py-2 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-background/85"
+                data-testid="source-file-rail"
+              >
+                <ScrollArea
+                  className="w-full"
+                  data-testid="source-file-tabs-scroll"
+                >
+                  <TabsList
+                    className="h-9 w-max justify-start gap-1 rounded-lg border border-border/70 bg-muted/70 p-1"
+                    data-testid="source-file-tablist"
+                  >
+                    {sourceManifest.files.map((file) => (
+                      <Tooltip key={file.path}>
+                        <TooltipTrigger asChild>
+                          <TabsTrigger
+                            value={file.path}
+                            className="h-7 gap-1.5 text-muted-foreground transition-colors hover:text-foreground data-[state=active]:border-border data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm"
+                            data-testid="source-file-tab"
+                            data-file-path={file.path}
+                          >
+                            <span className="max-w-56 truncate font-mono text-xs">
+                              {sourceTabLabelMap.get(file.path) ?? file.path}
+                            </span>
+                            {file.entry ? (
+                              <Badge variant="secondary" className="text-[10px]">
+                                entry
+                              </Badge>
+                            ) : null}
+                            {file.status === "skipped" ? (
+                              <Badge variant="outline" className="text-[10px]">
+                                skipped
+                              </Badge>
+                            ) : null}
+                          </TabsTrigger>
+                        </TooltipTrigger>
+                        <TooltipContent side="top" align="start">
+                          <span className="font-mono text-xs">{file.path}</span>
+                        </TooltipContent>
+                      </Tooltip>
+                    ))}
+                  </TabsList>
+                </ScrollArea>
+              </div>
+
+              <div className="min-h-0 flex-1 pt-3">
+                {selectedSourceFile?.status === "ready" ? (
+                  <CodeEditor
+                    value={selectedSourceFile.content ?? ""}
+                    config={getInspectorEditorConfig({
+                      panel: "source",
+                      sourceFilePath: selectedSourceFile.path,
+                    })}
+                    className="h-full"
+                    data-testid="source-view"
+                  />
+                ) : (
+                  <Empty
+                    className="h-full rounded-lg border bg-muted/15"
+                    data-testid="source-view-skipped"
+                  >
+                    <EmptyHeader>
+                      <EmptyMedia variant="icon">
+                        <FileText />
+                      </EmptyMedia>
+                      <EmptyTitle>Source preview unavailable</EmptyTitle>
+                      <EmptyDescription>
+                        {formatSourceSkipReason(selectedSourceFile?.skipReason)}
+                      </EmptyDescription>
+                    </EmptyHeader>
+                    <EmptyContent>
+                      <Badge variant="outline">
+                        {(selectedSourceFile?.bytes ?? 0).toLocaleString()} bytes
+                      </Badge>
+                    </EmptyContent>
+                  </Empty>
+                )}
+              </div>
+            </Tabs>
+          ) : (
+            <Empty
+              className="h-full rounded-lg border bg-muted/15"
+              data-testid="source-view-empty"
+            >
+              <EmptyHeader>
+                <EmptyMedia variant="icon">
+                  <Code2 />
+                </EmptyMedia>
+                <EmptyTitle>No source files found</EmptyTitle>
+                <EmptyDescription>
+                  This template folder does not contain previewable source files.
+                </EmptyDescription>
+              </EmptyHeader>
+            </Empty>
+          )
         ) : null}
 
         {activePanel.id === "playground" ? (

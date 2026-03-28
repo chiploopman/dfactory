@@ -212,8 +212,44 @@ test("dev mode: catalog, payload edit, html/pdf preview, generate, dock panel be
 
   await page.getByTestId("dock-tab-source").click();
   await expect(page.getByTestId("bottom-panel")).toBeVisible();
+  await expect(page.getByTestId("source-file-rail")).toBeVisible();
+  const sourceRailClassName = await page.getByTestId("source-file-rail").evaluate((element) => {
+    return element.className;
+  });
+  expect(sourceRailClassName).toContain("sticky");
+  expect(sourceRailClassName).toContain("top-0");
+  await expect(page.getByTestId("source-file-tablist")).toBeVisible();
+  await expect(page.getByTestId("source-file-tablist")).toHaveAttribute("data-variant", "default");
+  await expect(page.getByTestId("source-file-tab").first()).toBeVisible();
+  const activeSourceTab = page.locator("[data-testid='source-file-tab'][data-state='active']").first();
+  await expect(activeSourceTab).toBeVisible();
+  const firstSourceTab = page.getByTestId("source-file-tab").first();
+  const firstSourcePath = await firstSourceTab.getAttribute("data-file-path");
+  expect(firstSourcePath).toBeTruthy();
+  await firstSourceTab.hover();
+  await expect(page.locator("[data-slot='tooltip-content']").filter({ hasText: firstSourcePath ?? "" }).first()).toBeVisible();
+  const activeTabBackground = await activeSourceTab.evaluate((element) => {
+    return getComputedStyle(element).backgroundColor;
+  });
+  const inactiveSourceTab = page.locator("[data-testid='source-file-tab']:not([data-state='active'])").first();
+  if ((await inactiveSourceTab.count()) > 0) {
+    const inactiveTabBackground = await inactiveSourceTab.evaluate((element) => {
+      return getComputedStyle(element).backgroundColor;
+    });
+    expect(activeTabBackground).not.toBe(inactiveTabBackground);
+  } else {
+    const activeTabBorder = await activeSourceTab.evaluate((element) => {
+      return getComputedStyle(element).borderColor;
+    });
+    expect(activeTabBorder).not.toBe("rgba(0, 0, 0, 0)");
+  }
   await expect(page.getByTestId("source-view").locator(".cm-editor")).toBeVisible();
   await expect(page.getByTestId("source-view")).toContainText("defineTemplate");
+
+  if (testInfo.project.name.startsWith("vue-")) {
+    await page.getByRole("tab", { name: "InvoiceTemplate.vue" }).click();
+    await expect(page.getByTestId("source-view")).toContainText("<template>");
+  }
 
   await page.getByTestId("dock-tab-playground").click();
   await expect(page.getByTestId("bottom-panel")).toBeVisible();

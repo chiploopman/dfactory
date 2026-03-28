@@ -24,6 +24,7 @@
   "dependencies": {
     "bundle-require": "^5.1.0",
     "fast-glob": "^3.3.3",
+    "istextorbinary": "^9.5.0",
     "zod": "^4.1.11"
   },
   "devDependencies": {

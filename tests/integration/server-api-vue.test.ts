@@ -58,11 +58,19 @@ export function render(payload: { customerName: string }) {
 }
 `
     );
+    await fs.writeFile(
+      path.join(cwd, "src/templates/invoice/InvoiceTemplate.vue"),
+      `<template><article class="invoice-shell">Invoice Vue Shell</article></template>
+<style scoped>
+.invoice-shell { color: #334155; }
+</style>
+`
+    );
 
     app = await createDFactoryServer({
       cwd,
       configPath: "dfactory.config.ts",
-      isProduction: false
+      isProduction: true
     });
   });
 
@@ -98,15 +106,27 @@ export function render(payload: { customerName: string }) {
     expect(body.html).toContain("Hello Alice");
   });
 
-  it("returns source for vue template", async () => {
+  it("returns source manifest for vue template folder", async () => {
     const response = await app.inject({
       method: "GET",
       url: "/api/templates/invoice/source"
     });
 
     expect(response.statusCode).toBe(200);
-    const body = response.json() as { source: string };
-    expect(body.source).toContain('framework: "vue"');
+    const body = response.json() as {
+      entryFile: string;
+      files: Array<{
+        path: string;
+        status: "ready" | "skipped";
+      }>;
+    };
+    expect(body.entryFile).toBe("template.ts");
+    expect(body.files.find((file) => file.path === "template.ts")?.status).toBe(
+      "ready"
+    );
+    expect(
+      body.files.find((file) => file.path === "InvoiceTemplate.vue")?.status
+    ).toBe("ready");
   });
 
   it("returns template features for vue template", async () => {

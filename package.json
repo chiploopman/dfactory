@@ -6,7 +6,7 @@
   "packageManager": "pnpm@10.0.0",
   "scripts": {
     "build": "turbo run build",
-    "dev": "pnpm build && node packages/cli/dist/index.js dev --config dfactory.config.ts",
+    "dev": "pnpm build && node packages/cli/dist/index.js dev --config dfactory.config.vue.ts",
     "serve": "pnpm build && node packages/cli/dist/index.js serve --config dfactory.config.ts",
     "index": "pnpm build && node packages/cli/dist/index.js index --config dfactory.config.ts",
     "doctor": "pnpm build && node packages/cli/dist/index.js doctor --config dfactory.config.ts",
@@ -37,6 +37,7 @@
     "@dfactory/server": "workspace:*",
     "@dfactory/renderer-playwright": "workspace:*",
     "@dfactory/template-kit": "workspace:*",
-    "@dfactory/ui": "workspace:*"
+    "@dfactory/ui": "workspace:*",
+    "istextorbinary": "^9.5.0"
   }
 }

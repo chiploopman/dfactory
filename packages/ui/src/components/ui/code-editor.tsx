@@ -1,5 +1,8 @@
+import { css } from "@codemirror/lang-css"
+import { html } from "@codemirror/lang-html"
 import { javascript } from "@codemirror/lang-javascript"
 import { json } from "@codemirror/lang-json"
+import { markdown } from "@codemirror/lang-markdown"
 import { EditorView } from "@codemirror/view"
 import { githubLight } from "@uiw/codemirror-theme-github"
 import CodeMirror from "@uiw/react-codemirror"
@@ -22,6 +25,12 @@ function createLanguageExtensions(config: InspectorEditorConfig) {
     extensions.push(json())
   } else if (config.language === "javascript") {
     extensions.push(javascript({ jsx: true, typescript: true }))
+  } else if (config.language === "html") {
+    extensions.push(html())
+  } else if (config.language === "css") {
+    extensions.push(css())
+  } else if (config.language === "markdown") {
+    extensions.push(markdown())
   }
 
   if (config.lineWrapping) {

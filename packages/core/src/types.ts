@@ -134,6 +134,25 @@ export interface TemplateSummary {
   framework: string;
 }
 
+export type TemplateSourceFileStatus = "ready" | "skipped";
+export type TemplateSourceSkipReason = "binary" | "tooLarge" | "unreadable";
+
+export interface TemplateSourceFile {
+  path: string;
+  status: TemplateSourceFileStatus;
+  content?: string;
+  skipReason?: TemplateSourceSkipReason;
+  bytes: number;
+  entry: boolean;
+}
+
+export interface TemplateSourceManifest {
+  templateId: string;
+  root: string;
+  entryFile: string;
+  files: TemplateSourceFile[];
+}
+
 export interface TemplateDetails extends TemplateSummary {
   schema: Record<string, unknown>;
   source: string;

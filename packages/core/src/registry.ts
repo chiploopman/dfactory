@@ -1,6 +1,7 @@
 import fs from "node:fs/promises";
 import { randomUUID } from "node:crypto";
 import { performance } from "node:perf_hooks";
+import path from "node:path";
 
 import { z } from "zod";
 
@@ -8,6 +9,10 @@ import { AdapterRegistry } from "./adapter-registry";
 import { loadDFactoryConfig } from "./config";
 import { discoverTemplateCandidates } from "./discovery";
 import { loadFrameworkPlugins, resolveModuleLoaderFactory } from "./runtime-resolver";
+import {
+  collectTemplateSourceFiles,
+  DEFAULT_TEMPLATE_SOURCE_MAX_FILE_BYTES
+} from "./source-manifest";
 import type {
   DFactoryConfig,
   DFactoryFrameworkPlugin,
@@ -23,6 +28,7 @@ import type {
   TemplateExample,
   TemplateMeta,
   TemplateModule,
+  TemplateSourceManifest,
   TemplatePdfFeatureOverrides,
   PdfTemplateConfig,
   TemplateRenderContext,
@@ -274,9 +280,20 @@ export class DFactoryRegistry {
     return z.toJSONSchema(template.schema) as TemplateDetails["schema"];
   }
 
-  async getTemplateSource(templateId: string): Promise<string> {
+  async getTemplateSource(templateId: string): Promise<TemplateSourceManifest> {
     const template = this.getTemplate(templateId);
-    return fs.readFile(template.filePath, "utf8");
+    const sourceManifest = await collectTemplateSourceFiles({
+      rootDir: template.directory,
+      entryFilePath: template.filePath,
+      maxFileBytes: DEFAULT_TEMPLATE_SOURCE_MAX_FILE_BYTES
+    });
+
+    return {
+      templateId,
+      root: path.relative(this.cwd, template.directory).split(path.sep).join("/"),
+      entryFile: sourceManifest.entryFile,
+      files: sourceManifest.files
+    };
   }
 
   getTemplatePdfConfig(templateId: string): PdfTemplateConfig {

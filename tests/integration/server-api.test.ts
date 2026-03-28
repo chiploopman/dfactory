@@ -55,11 +55,25 @@ export function render(payload: { customerName: string }) {
 }
 `
     );
+    await fs.mkdir(path.join(cwd, "src/templates/invoice/partials"), {
+      recursive: true
+    });
+    await fs.mkdir(path.join(cwd, "src/templates/invoice/assets"), {
+      recursive: true
+    });
+    await fs.writeFile(
+      path.join(cwd, "src/templates/invoice/partials/summary.ts"),
+      `export const summaryTitle = "Invoice Summary";\n`
+    );
+    await fs.writeFile(
+      path.join(cwd, "src/templates/invoice/assets/logo.bin"),
+      Buffer.from([0, 159, 146, 150, 0, 255, 1, 2, 3])
+    );
 
     app = await createDFactoryServer({
       cwd,
       configPath: "dfactory.config.ts",
-      isProduction: false
+      isProduction: true
     });
   });
 
@@ -91,6 +105,32 @@ export function render(payload: { customerName: string }) {
     expect(response.statusCode).toBe(200);
     const body = response.json() as { html: string };
     expect(body.html).toContain("Hello Alice");
+  });
+
+  it("returns recursive source manifest with skipped binary files", async () => {
+    const response = await app.inject({
+      method: "GET",
+      url: "/api/templates/invoice/source"
+    });
+
+    expect(response.statusCode).toBe(200);
+    const body = response.json() as {
+      templateId: string;
+      entryFile: string;
+      files: Array<{
+        path: string;
+        status: "ready" | "skipped";
+        skipReason?: "binary" | "tooLarge" | "unreadable";
+      }>;
+    };
+
+    expect(body.templateId).toBe("invoice");
+    expect(body.entryFile).toBe("template.tsx");
+    expect(body.files.some((file) => file.path === "template.tsx")).toBe(true);
+    expect(body.files.some((file) => file.path === "partials/summary.ts")).toBe(true);
+    expect(body.files.find((file) => file.path === "template.tsx")?.status).toBe("ready");
+    expect(body.files.find((file) => file.path === "assets/logo.bin")?.status).toBe("skipped");
+    expect(body.files.find((file) => file.path === "assets/logo.bin")?.skipReason).toBe("binary");
   });
 
   it("returns template feature capabilities", async () => {
