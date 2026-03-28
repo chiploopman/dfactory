@@ -12,7 +12,8 @@
     "doctor": "pnpm build && node packages/cli/dist/index.js doctor --config dfactory.config.ts",
     "lint": "turbo run lint",
     "typecheck": "turbo run typecheck",
-    "test": "turbo run test && vitest run",
+    "test": "vitest run",
+    "test:licenses": "vitest run tests/unit/pdf-feature-license-policy.test.ts",
     "test:e2e": "pnpm build && playwright test",
     "clean": "turbo run clean && rm -rf node_modules"
   },
@@ -28,10 +29,14 @@
     "@dfactory/core": "workspace:*",
     "@dfactory/framework-react": "workspace:*",
     "@dfactory/framework-vue": "workspace:*",
+    "@dfactory/pdf-feature-pagedjs": "workspace:*",
+    "@dfactory/pdf-feature-pdf-lib": "workspace:*",
+    "@dfactory/pdf-feature-standard": "workspace:*",
     "@dfactory/module-loader-bundle": "workspace:*",
     "@dfactory/module-loader-vite": "workspace:*",
     "@dfactory/server": "workspace:*",
     "@dfactory/renderer-playwright": "workspace:*",
+    "@dfactory/template-kit": "workspace:*",
     "@dfactory/ui": "workspace:*"
   }
 }

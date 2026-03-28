@@ -8,6 +8,14 @@ function getProdUrl(projectName: string): string {
   return "http://127.0.0.1:3220";
 }
 
+function getDevApiUrl(projectName: string): string {
+  if (projectName.startsWith("vue-")) {
+    return "http://127.0.0.1:3310/api";
+  }
+
+  return "http://127.0.0.1:3210/api";
+}
+
 async function setCodeMirrorValue(page: Page, testId: string, value: string) {
   const editorContent = page.getByTestId(testId).locator(".cm-content").first();
   await expect(editorContent).toBeVisible();
@@ -17,7 +25,7 @@ async function setCodeMirrorValue(page: Page, testId: string, value: string) {
   await page.keyboard.insertText(value);
 }
 
-test("dev mode: catalog, payload edit, html/pdf preview, generate, dock panel behavior", async ({ page }) => {
+test("dev mode: catalog, payload edit, html/pdf preview, generate, dock panel behavior", async ({ page }, testInfo) => {
   await page.goto("/");
 
   await expect(page.getByTestId("dfactory-app")).toBeVisible();
@@ -47,6 +55,45 @@ test("dev mode: catalog, payload edit, html/pdf preview, generate, dock panel be
       2
     )
   );
+
+  const apiBase = getDevApiUrl(testInfo.project.name);
+  const preflightResponse = await page.request.post(`${apiBase}/document/preflight`, {
+    data: {
+      templateId: "invoice",
+      payload: {
+        invoiceNumber: "INV-2026",
+        customerName: "Acme Corporation",
+        issuedAt: "2026-03-27",
+        items: [
+          { name: "Design", qty: 2, price: 150 },
+          { name: "Development", qty: 3, price: 220 }
+        ]
+      },
+      mode: "pdf"
+    }
+  });
+  expect(preflightResponse.ok()).toBeTruthy();
+  const preflightBody = (await preflightResponse.json()) as {
+    ok: boolean;
+    resolvedFeatures: {
+      toc?: {
+        enabled?: boolean;
+      };
+    };
+  };
+  expect(preflightBody.ok).toBe(true);
+  expect(preflightBody.resolvedFeatures.toc?.enabled).toBe(true);
+
+  const featuresResponse = await page.request.get(`${apiBase}/templates/invoice/features`);
+  expect(featuresResponse.ok()).toBeTruthy();
+  const featuresBody = (await featuresResponse.json()) as {
+    features: {
+      toc?: {
+        enabled?: boolean;
+      };
+    };
+  };
+  expect(featuresBody.features.toc?.enabled).toBe(true);
 
   const [htmlPreviewResponse] = await Promise.all([
     page.waitForResponse((response) => {
@@ -166,7 +213,7 @@ test("dev mode: catalog, payload edit, html/pdf preview, generate, dock panel be
   await page.getByTestId("dock-tab-source").click();
   await expect(page.getByTestId("bottom-panel")).toBeVisible();
   await expect(page.getByTestId("source-view").locator(".cm-editor")).toBeVisible();
-  await expect(page.getByTestId("source-view")).toContainText("export const meta");
+  await expect(page.getByTestId("source-view")).toContainText("defineTemplate");
 
   await page.getByTestId("dock-tab-playground").click();
   await expect(page.getByTestId("bottom-panel")).toBeVisible();

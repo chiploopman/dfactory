@@ -16,5 +16,7 @@ describe("core config", () => {
     expect(config.plugins).not.toContain("@dfactory/framework-vue");
     expect(config.moduleLoader).toBeUndefined();
     expect(config.renderer.engine).toBe("playwright");
+    expect(config.renderer.pdfPlugins).toContain("@dfactory/pdf-feature-standard");
+    expect(config.renderer.defaults?.format).toBe("A4");
   });
 });

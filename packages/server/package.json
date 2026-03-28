@@ -22,6 +22,7 @@
   },
   "dependencies": {
     "@dfactory/core": "workspace:*",
+    "@dfactory/pdf-feature-standard": "workspace:*",
     "@dfactory/renderer-playwright": "workspace:*",
     "@fastify/cors": "^11.1.0",
     "@fastify/static": "^8.2.0",

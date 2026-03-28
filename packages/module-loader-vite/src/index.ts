@@ -26,9 +26,17 @@ class ViteTemplateModuleLoader implements TemplateModuleLoader {
       appType: "custom",
       configFile: false,
       logLevel: "error",
+      optimizeDeps: {
+        noDiscovery: true,
+        entries: []
+      },
       server: {
         middlewareMode: true,
-        hmr: false
+        hmr: false,
+        ws: false,
+        watch: {
+          ignored: ["**/*"]
+        }
       },
       resolve: {
         alias: transformConfig.aliases.map(mapAlias)

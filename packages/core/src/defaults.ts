@@ -24,6 +24,14 @@ export const DEFAULT_CONFIG: DFactoryConfig = {
   renderer: {
     engine: "playwright",
     poolSize: 4,
-    timeoutMs: 30000
+    timeoutMs: 30000,
+    pdfPlugins: ["@dfactory/pdf-feature-standard"],
+    defaults: {
+      format: "A4",
+      printBackground: true,
+      preferCSSPageSize: true,
+      tagged: true,
+      outline: true
+    }
   }
 };

@@ -9,8 +9,8 @@ export const frameworkReactPlugin: DFactoryFrameworkPlugin = {
   async createAdapter() {
     return {
       framework: "react",
-      async renderHtml({ template, payload }) {
-        const element = await template.module.render(payload);
+      async renderHtml({ template, payload, renderContext }) {
+        const element = await template.module.render(payload, renderContext);
         const html = renderToStaticMarkup(element as ReactElement);
         return `<!doctype html><html><head><meta charset=\"utf-8\" /><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" /></head><body>${html}</body></html>`;
       }
@@ -20,4 +20,3 @@ export const frameworkReactPlugin: DFactoryFrameworkPlugin = {
 };
 
 export default frameworkReactPlugin;
-

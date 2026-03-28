@@ -10,8 +10,10 @@
 - `GET /api/templates`
 - `GET /api/templates/:id`
 - `GET /api/templates/:id/schema`
+- `GET /api/templates/:id/features`
 - `GET /api/templates/:id/source`
 - `POST /api/templates/refresh`
+- `POST /api/document/preflight`
 - `POST /api/document/preview`
 - `POST /api/document/generate`
 
@@ -23,7 +25,18 @@
   "payload": {
     "invoiceNumber": "INV-1001"
   },
-  "mode": "html"
+  "mode": "html",
+  "options": {
+    "profile": "default",
+    "features": {
+      "pagination": {
+        "mode": "css"
+      }
+    },
+    "pdf": {
+      "format": "A4"
+    }
+  }
 }
 ```
 
@@ -31,6 +44,8 @@
 
 - `html`: returns rendered HTML payload.
 - `pdf`: returns `application/pdf` stream.
+
+`POST /api/document/preflight` validates payload, applies template + feature pipeline, and returns diagnostics without returning a PDF blob.
 
 ## Security
 

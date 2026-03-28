@@ -47,6 +47,9 @@ export const schema = {
     return { success: false, error: { message: "customerName is required" } };
   }
 };
+export const pdf = {
+  toc: { enabled: true, maxDepth: 2, title: "Contents" }
+};
 export function render(payload: { customerName: string }) {
   return "Hello " + payload.customerName;
 }
@@ -88,5 +91,47 @@ export function render(payload: { customerName: string }) {
     expect(response.statusCode).toBe(200);
     const body = response.json() as { html: string };
     expect(body.html).toContain("Hello Alice");
+  });
+
+  it("returns template feature capabilities", async () => {
+    const response = await app.inject({
+      method: "GET",
+      url: "/api/templates/invoice/features"
+    });
+
+    expect(response.statusCode).toBe(200);
+    const body = response.json() as {
+      features: {
+        toc?: {
+          enabled?: boolean;
+        };
+      };
+      plugins: string[];
+    };
+
+    expect(body.features.toc?.enabled).toBe(true);
+    expect(body.plugins).toContain("@dfactory/pdf-feature-standard");
+  });
+
+  it("runs preflight for valid payload", async () => {
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/document/preflight",
+      payload: {
+        templateId: "invoice",
+        payload: { customerName: "Alice" },
+        mode: "pdf"
+      }
+    });
+
+    expect(response.statusCode).toBe(200);
+    const body = response.json() as {
+      ok: boolean;
+      resolvedFeatures: {
+        toc?: { enabled?: boolean };
+      };
+    };
+    expect(body.ok).toBe(true);
+    expect(body.resolvedFeatures.toc?.enabled).toBe(true);
   });
 });

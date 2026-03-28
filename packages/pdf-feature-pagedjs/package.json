@@ -1,0 +1,28 @@
+{
+  "name": "@dfactory/pdf-feature-pagedjs",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": ["dist", "src"],
+  "scripts": {
+    "build": "tsup src/index.ts --format esm --dts",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "eslint src --ext .ts",
+    "test": "vitest run --passWithNoTests",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@dfactory/renderer-playwright": "workspace:*",
+    "pagedjs": "^0.4.3"
+  },
+  "devDependencies": {
+    "tsup": "^8.3.5"
+  }
+}

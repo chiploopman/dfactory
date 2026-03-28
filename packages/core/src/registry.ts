@@ -1,4 +1,5 @@
 import fs from "node:fs/promises";
+import { randomUUID } from "node:crypto";
 import { performance } from "node:perf_hooks";
 
 import { z } from "zod";
@@ -16,10 +17,15 @@ import type {
   RegistryOptions,
   RegistryRuntimeInfo,
   RenderResult,
+  RenderMode,
   TemplateAdapter,
   TemplateDetails,
+  TemplateExample,
   TemplateMeta,
   TemplateModule,
+  TemplatePdfFeatureOverrides,
+  PdfTemplateConfig,
+  TemplateRenderContext,
   TemplateModuleLoader,
   TemplateSummary
 } from "./types";
@@ -51,6 +57,84 @@ function assertTemplateModule(value: unknown, filePath: string): TemplateModule 
   }
 
   return record as TemplateModule;
+}
+
+function mergePdfTemplateConfig(
+  base: PdfTemplateConfig | undefined,
+  override: TemplatePdfFeatureOverrides | undefined
+): PdfTemplateConfig {
+  if (!base && !override) {
+    return {};
+  }
+
+  return {
+    ...(base ?? {}),
+    ...(override ?? {}),
+    page: {
+      ...(base?.page ?? {}),
+      ...(override?.page ?? {})
+    },
+    headerFooter: {
+      ...(base?.headerFooter ?? {}),
+      ...(override?.headerFooter ?? {})
+    },
+    toc: {
+      ...(base?.toc ?? {}),
+      ...(override?.toc ?? {})
+    },
+    pagination: {
+      ...(base?.pagination ?? {}),
+      ...(override?.pagination ?? {})
+    },
+    assets: {
+      ...(base?.assets ?? {}),
+      ...(override?.assets ?? {})
+    },
+    fonts: {
+      ...(base?.fonts ?? {}),
+      ...(override?.fonts ?? {}),
+      families: override?.fonts?.families ?? base?.fonts?.families ?? []
+    },
+    metadata: {
+      ...(base?.metadata ?? {}),
+      ...(override?.metadata ?? {})
+    },
+    watermark: {
+      ...(base?.watermark ?? {}),
+      ...(override?.watermark ?? {})
+    }
+  };
+}
+
+function createTemplateRenderContext(options: {
+  templateId: string;
+  mode: RenderMode;
+  runId: string;
+  profile?: string;
+  features: PdfTemplateConfig;
+}): TemplateRenderContext {
+  return {
+    runId: options.runId,
+    mode: options.mode,
+    profile: options.profile,
+    now: new Date(),
+    templateId: options.templateId,
+    features: options.features,
+    helpers: {
+      markerClass(name) {
+        switch (name) {
+          case "pageBreakBefore":
+            return "df-page-break-before";
+          case "keepWithNext":
+            return "df-keep-with-next";
+          case "avoidBreak":
+            return "df-avoid-break";
+          default:
+            return "";
+        }
+      }
+    }
+  };
 }
 
 export class DFactoryRegistry {
@@ -179,7 +263,9 @@ export class DFactoryRegistry {
       meta: template.meta,
       framework: template.meta.framework,
       source,
-      schema
+      schema,
+      pdf: template.module.pdf,
+      examples: template.module.examples
     };
   }
 
@@ -191,6 +277,16 @@ export class DFactoryRegistry {
   async getTemplateSource(templateId: string): Promise<string> {
     const template = this.getTemplate(templateId);
     return fs.readFile(template.filePath, "utf8");
+  }
+
+  getTemplatePdfConfig(templateId: string): PdfTemplateConfig {
+    const template = this.getTemplate(templateId);
+    return mergePdfTemplateConfig(template.module.pdf, undefined);
+  }
+
+  getTemplateExamples(templateId: string): TemplateExample[] {
+    const template = this.getTemplate(templateId);
+    return [...(template.module.examples ?? [])];
   }
 
   async runPluginDoctorChecks(): Promise<DoctorCheckResult[]> {
@@ -211,7 +307,16 @@ export class DFactoryRegistry {
     return checks;
   }
 
-  async renderTemplate(templateId: string, payload: unknown): Promise<RenderResult> {
+  async renderTemplate(
+    templateId: string,
+    payload: unknown,
+    options?: {
+      mode?: RenderMode;
+      profile?: string;
+      features?: TemplatePdfFeatureOverrides;
+      runId?: string;
+    }
+  ): Promise<RenderResult> {
     const template = this.getTemplate(templateId);
 
     const validationStart = performance.now();
@@ -227,10 +332,21 @@ export class DFactoryRegistry {
       throw new Error(`No adapter registered for framework '${template.meta.framework}'.`);
     }
 
+    const runId = options?.runId ?? randomUUID();
+    const features = mergePdfTemplateConfig(template.module.pdf, options?.features);
+    const renderContext = createTemplateRenderContext({
+      templateId,
+      mode: options?.mode ?? "html",
+      runId,
+      profile: options?.profile,
+      features
+    });
+
     const renderStart = performance.now();
     const html = await adapter.renderHtml({
       template,
-      payload: parsedPayload.data
+      payload: parsedPayload.data,
+      renderContext
     });
     const renderEnd = performance.now();
 
@@ -239,9 +355,11 @@ export class DFactoryRegistry {
       diagnostics: {
         templateId,
         framework: template.meta.framework,
+        runId,
         schemaValidationMs: validationEnd - validationStart,
         renderMs: renderEnd - renderStart
-      }
+      },
+      templatePdfConfig: features
     };
   }
 

@@ -28,6 +28,8 @@ describe("dependency boundaries", () => {
     expect(dependencies).not.toContain("vite");
     expect(dependencies).not.toContain("@dfactory/framework-react");
     expect(dependencies).not.toContain("@dfactory/framework-vue");
+    expect(dependencies).not.toContain("pagedjs");
+    expect(dependencies).not.toContain("pdf-lib");
   });
 
   it("server package does not hard-depend on framework plugins", async () => {
@@ -36,6 +38,7 @@ describe("dependency boundaries", () => {
 
     expect(dependencies).not.toContain("@dfactory/framework-react");
     expect(dependencies).not.toContain("@dfactory/framework-vue");
+    expect(dependencies).not.toContain("pagedjs");
   });
 
   it("react starter does not include vue runtime dependencies", async () => {

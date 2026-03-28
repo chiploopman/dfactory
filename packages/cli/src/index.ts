@@ -4,6 +4,10 @@ import path from "node:path";
 import process from "node:process";
 
 import { createRegistry } from "@dfactory/core";
+import {
+  loadPdfFeaturePlugins,
+  runPdfFeatureDoctorChecks
+} from "@dfactory/renderer-playwright";
 import { startDFactoryServer } from "@dfactory/server";
 import { buildUiAssets, startUiDevServer } from "@dfactory/ui/node";
 import { Command } from "commander";
@@ -153,6 +157,18 @@ async function runDoctor(options: { cwd: string; config?: string }) {
 
       const pluginChecks = await registry.runPluginDoctorChecks();
       checks.push(...pluginChecks);
+
+      const config = registry.getConfig();
+      const pdfPlugins = await loadPdfFeaturePlugins({
+        cwd: options.cwd,
+        pluginRefs: config.renderer.pdfPlugins ?? []
+      });
+      const pdfChecks = await runPdfFeatureDoctorChecks({
+        cwd: options.cwd,
+        config,
+        plugins: pdfPlugins
+      });
+      checks.push(...pdfChecks);
     } finally {
       await registry.close();
     }

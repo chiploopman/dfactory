@@ -32,25 +32,8 @@ export default config;
     );
 
     await fs.writeFile(
-      path.join(cwd, "src/templates/invoice/InvoiceTemplate.vue"),
-      `<script setup lang="ts">
-defineProps<{
-  payload: {
-    customerName: string;
-  };
-}>();
-</script>
-
-<template>
-  <main>Hello {{ payload.customerName }}</main>
-</template>
-`
-    );
-
-    await fs.writeFile(
       path.join(cwd, "src/templates/invoice/template.ts"),
       `import { h } from "vue";
-import InvoiceTemplate from "./InvoiceTemplate.vue";
 
 export const meta = { id: "invoice", title: "Invoice", framework: "vue", version: "1.0.0" } as const;
 export const schema = {
@@ -66,9 +49,12 @@ export const schema = {
     return { success: false, error: { message: "customerName is required" } };
   }
 };
+export const pdf = {
+  toc: { enabled: true, maxDepth: 2, title: "Contents" }
+};
 
 export function render(payload: { customerName: string }) {
-  return h(InvoiceTemplate, { payload });
+  return h("main", null, "Hello " + payload.customerName);
 }
 `
     );
@@ -120,6 +106,40 @@ export function render(payload: { customerName: string }) {
 
     expect(response.statusCode).toBe(200);
     const body = response.json() as { source: string };
-    expect(body.source).toContain("InvoiceTemplate.vue");
+    expect(body.source).toContain('framework: "vue"');
+  });
+
+  it("returns template features for vue template", async () => {
+    const response = await app.inject({
+      method: "GET",
+      url: "/api/templates/invoice/features"
+    });
+
+    expect(response.statusCode).toBe(200);
+    const body = response.json() as {
+      features: {
+        toc?: {
+          enabled?: boolean;
+        };
+      };
+    };
+
+    expect(body.features.toc?.enabled).toBe(true);
+  });
+
+  it("runs preflight for vue template", async () => {
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/document/preflight",
+      payload: {
+        templateId: "invoice",
+        payload: { customerName: "Alice" },
+        mode: "pdf"
+      }
+    });
+
+    expect(response.statusCode).toBe(200);
+    const body = response.json() as { ok: boolean };
+    expect(body.ok).toBe(true);
   });
 });

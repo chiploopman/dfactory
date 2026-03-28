@@ -9,14 +9,16 @@
     "dfactory:serve": "dfactory serve --config dfactory.config.ts"
   },
   "dependencies": {
+    "@dfactory/cli": "workspace:*",
+    "@dfactory/core": "workspace:*",
+    "@dfactory/framework-react": "workspace:*",
+    "@dfactory/module-loader-bundle": "workspace:*",
+    "@dfactory/pdf-feature-standard": "workspace:*",
+    "@dfactory/template-kit": "workspace:*",
     "react": "^19.1.1",
     "zod": "^4.1.11"
   },
   "devDependencies": {
-    "@dfactory/framework-react": "workspace:*",
-    "@dfactory/cli": "workspace:*",
-    "@dfactory/core": "workspace:*",
-    "@dfactory/module-loader-bundle": "workspace:*",
     "@types/react": "^19.1.13"
   }
 }

@@ -1,6 +1,6 @@
 import type { FastifyRequest } from "fastify";
 
-import type { DFactoryRegistry } from "@dfactory/core";
+import type { DFactoryRegistry, TemplatePdfFeatureOverrides } from "@dfactory/core";
 
 export interface DocumentRequest {
   templateId: string;
@@ -9,6 +9,8 @@ export interface DocumentRequest {
   options?: {
     pdf?: Record<string, unknown>;
     timeoutMs?: number;
+    profile?: string;
+    features?: TemplatePdfFeatureOverrides;
   };
 }
 

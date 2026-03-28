@@ -139,7 +139,13 @@ async function copyTemplateTree(options: {
 
 function applyPackageUpdates(existing: PackageJson, frameworkSpec: FrameworkTemplateSpec): PackageJson {
   const nextDependencies = {
-    ...(existing.dependencies ?? {})
+    ...(existing.dependencies ?? {}),
+    "@dfactory/cli": "latest",
+    "@dfactory/core": "latest",
+    "@dfactory/template-kit": "latest",
+    "@dfactory/pdf-feature-standard": "latest",
+    [frameworkSpec.frameworkPluginPackage]: "latest",
+    [frameworkSpec.moduleLoaderPackage]: "latest"
   };
   if (!nextDependencies.zod) {
     nextDependencies.zod = "latest";
@@ -153,11 +159,7 @@ function applyPackageUpdates(existing: PackageJson, frameworkSpec: FrameworkTemp
     },
     dependencies: nextDependencies,
     devDependencies: {
-      ...existing.devDependencies,
-      "@dfactory/cli": "latest",
-      "@dfactory/core": "latest",
-      [frameworkSpec.frameworkPluginPackage]: "latest",
-      [frameworkSpec.moduleLoaderPackage]: "latest"
+      ...existing.devDependencies
     }
   };
 }
@@ -223,4 +225,3 @@ if (isMainModule) {
     process.exit(1);
   });
 }
-

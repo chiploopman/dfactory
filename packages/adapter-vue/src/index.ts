@@ -62,8 +62,8 @@ export const frameworkVuePlugin: DFactoryFrameworkPlugin = {
   async createAdapter() {
     return {
       framework: "vue",
-      async renderHtml({ template, payload }) {
-        const rendered = (await template.module.render(payload)) as RenderedOutput;
+      async renderHtml({ template, payload, renderContext }) {
+        const rendered = (await template.module.render(payload, renderContext)) as RenderedOutput;
 
         const app = createSSRApp({
           render: () => normalizeRenderedOutput(rendered)
@@ -79,4 +79,3 @@ export const frameworkVuePlugin: DFactoryFrameworkPlugin = {
 };
 
 export default frameworkVuePlugin;
-

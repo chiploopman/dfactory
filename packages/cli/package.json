@@ -29,6 +29,7 @@
   },
   "dependencies": {
     "@dfactory/core": "workspace:*",
+    "@dfactory/renderer-playwright": "workspace:*",
     "@dfactory/server": "workspace:*",
     "@dfactory/ui": "workspace:*",
     "commander": "^14.0.1",

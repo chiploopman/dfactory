@@ -1,12 +1,89 @@
+import path from "node:path";
+import { pathToFileURL } from "node:url";
+
 import { chromium, type Browser } from "playwright";
+import type {
+  DFactoryConfig,
+  DoctorCheckResult,
+  PdfTemplateConfig,
+  RenderMode,
+  TemplateMeta,
+  TemplatePdfFeatureOverrides
+} from "@dfactory/core";
+
+type PdfOptionRecord = Record<string, unknown>;
+
+export interface PdfFeatureDiagnostic {
+  pluginId: string;
+  level: "info" | "warn" | "error";
+  code: string;
+  message: string;
+  details?: Record<string, unknown>;
+}
+
+interface PdfFeatureBaseContext {
+  templateId?: string;
+  templateMeta?: TemplateMeta;
+  mode?: RenderMode;
+  profile?: string;
+  payload?: unknown;
+  templateFeatures?: PdfTemplateConfig;
+  featuresOverride?: TemplatePdfFeatureOverrides;
+  resolvedFeatures: PdfTemplateConfig;
+}
+
+export interface PdfFeatureHtmlContext extends PdfFeatureBaseContext {
+  html: string;
+  diagnostics: PdfFeatureDiagnostic[];
+  options: PdfOptionRecord;
+}
+
+export interface PdfFeaturePdfContext extends PdfFeatureHtmlContext {
+  pdf: Buffer;
+}
+
+export interface PdfFeaturePlugin {
+  id: string;
+  htmlPre?: (context: PdfFeatureHtmlContext) => Promise<string | void> | string | void;
+  htmlPost?: (context: PdfFeatureHtmlContext) => Promise<string | void> | string | void;
+  preflight?: (context: PdfFeatureHtmlContext) => Promise<PdfFeatureDiagnostic[] | void> | PdfFeatureDiagnostic[] | void;
+  diagnostics?: (context: PdfFeatureHtmlContext) => Promise<PdfFeatureDiagnostic[] | void> | PdfFeatureDiagnostic[] | void;
+  pdfPost?: (context: PdfFeaturePdfContext) => Promise<Buffer | void> | Buffer | void;
+  doctorChecks?: (context: { cwd: string; config: DFactoryConfig }) => Promise<DoctorCheckResult[]> | DoctorCheckResult[];
+}
 
 export interface PdfRenderOptions {
   timeoutMs?: number;
-  pdf?: Record<string, unknown>;
+  pdf?: PdfOptionRecord;
+  templateId?: string;
+  templateMeta?: TemplateMeta;
+  mode?: RenderMode;
+  profile?: string;
+  payload?: unknown;
+  templateFeatures?: PdfTemplateConfig;
+  features?: TemplatePdfFeatureOverrides;
+}
+
+export interface PdfRenderResult {
+  pdf: Buffer;
+  diagnostics: PdfFeatureDiagnostic[];
+  resolvedFeatures: PdfTemplateConfig;
+  effectivePdfOptions: PdfOptionRecord;
+}
+
+export interface PdfPreflightResult {
+  html: string;
+  diagnostics: PdfFeatureDiagnostic[];
+  resolvedFeatures: PdfTemplateConfig;
 }
 
 export interface PdfRenderer {
-  htmlToPdf: (html: string, options?: PdfRenderOptions) => Promise<Buffer>;
+  htmlToPdf: (html: string, options?: PdfRenderOptions) => Promise<PdfRenderResult>;
+  preflight: (html: string, options?: PdfRenderOptions) => Promise<PdfPreflightResult>;
+  resolveFeatures: (options?: {
+    templateFeatures?: PdfTemplateConfig;
+    featuresOverride?: TemplatePdfFeatureOverrides;
+  }) => PdfTemplateConfig;
   close: () => Promise<void>;
 }
 
@@ -41,14 +118,254 @@ class Semaphore {
   }
 }
 
+function mergePdfTemplateConfig(
+  base: PdfTemplateConfig | undefined,
+  override: TemplatePdfFeatureOverrides | undefined
+): PdfTemplateConfig {
+  return {
+    ...(base ?? {}),
+    ...(override ?? {}),
+    page: {
+      ...(base?.page ?? {}),
+      ...(override?.page ?? {})
+    },
+    headerFooter: {
+      ...(base?.headerFooter ?? {}),
+      ...(override?.headerFooter ?? {})
+    },
+    toc: {
+      ...(base?.toc ?? {}),
+      ...(override?.toc ?? {})
+    },
+    pagination: {
+      ...(base?.pagination ?? {}),
+      ...(override?.pagination ?? {})
+    },
+    assets: {
+      ...(base?.assets ?? {}),
+      ...(override?.assets ?? {})
+    },
+    fonts: {
+      ...(base?.fonts ?? {}),
+      ...(override?.fonts ?? {}),
+      families: override?.fonts?.families ?? base?.fonts?.families ?? []
+    },
+    metadata: {
+      ...(base?.metadata ?? {}),
+      ...(override?.metadata ?? {})
+    },
+    watermark: {
+      ...(base?.watermark ?? {}),
+      ...(override?.watermark ?? {})
+    }
+  };
+}
+
+function replaceHeaderFooterTokens(template: string, options: {
+  templateId?: string;
+  title?: string;
+  tokens?: Record<string, string>;
+}): string {
+  const replacements: Record<string, string> = {
+    "{{pageNumber}}": `<span class="pageNumber"></span>`,
+    "{{totalPages}}": `<span class="totalPages"></span>`,
+    "{{date}}": new Date().toISOString(),
+    "{{title}}": options.title ?? "",
+    "{{templateId}}": options.templateId ?? "",
+    ...(options.tokens ?? {})
+  };
+
+  let output = template;
+  for (const [token, value] of Object.entries(replacements)) {
+    output = output.replaceAll(token, value);
+  }
+  return output;
+}
+
+function toPdfPageOptions(
+  features: PdfTemplateConfig,
+  tokenContext: { templateId?: string; title?: string }
+): PdfOptionRecord {
+  const resolved: PdfOptionRecord = {};
+  const page = features.page;
+  if (page?.size) {
+    resolved.format = page.size;
+  }
+  if (page?.orientation) {
+    resolved.landscape = page.orientation === "landscape";
+  }
+  if (page?.marginsMm) {
+    resolved.margin = {
+      top: `${page.marginsMm.top}mm`,
+      right: `${page.marginsMm.right}mm`,
+      bottom: `${page.marginsMm.bottom}mm`,
+      left: `${page.marginsMm.left}mm`
+    };
+  }
+
+  const headerFooter = features.headerFooter;
+  if (headerFooter?.enabled) {
+    resolved.displayHeaderFooter = true;
+    if (headerFooter.headerTemplate) {
+      resolved.headerTemplate = replaceHeaderFooterTokens(headerFooter.headerTemplate, {
+        templateId: tokenContext.templateId,
+        title: tokenContext.title,
+        tokens: headerFooter.tokens
+      });
+    }
+    if (headerFooter.footerTemplate) {
+      resolved.footerTemplate = replaceHeaderFooterTokens(headerFooter.footerTemplate, {
+        templateId: tokenContext.templateId,
+        title: tokenContext.title,
+        tokens: headerFooter.tokens
+      });
+    }
+  }
+
+  return resolved;
+}
+
+async function runHtmlStage(
+  plugins: PdfFeaturePlugin[],
+  stage: "htmlPre" | "htmlPost",
+  context: PdfFeatureHtmlContext
+): Promise<void> {
+  for (const plugin of plugins) {
+    const handler = plugin[stage];
+    if (!handler) {
+      continue;
+    }
+
+    const updated = await handler(context);
+    if (typeof updated === "string") {
+      context.html = updated;
+    }
+  }
+}
+
+async function collectDiagnostics(
+  plugins: PdfFeaturePlugin[],
+  stage: "preflight" | "diagnostics",
+  context: PdfFeatureHtmlContext
+): Promise<void> {
+  for (const plugin of plugins) {
+    const handler = plugin[stage];
+    if (!handler) {
+      continue;
+    }
+
+    const result = await handler(context);
+    if (Array.isArray(result) && result.length > 0) {
+      context.diagnostics.push(...result);
+    }
+  }
+}
+
+function resolveModuleReference(cwd: string, moduleRef: string): string {
+  if (moduleRef.startsWith(".")) {
+    return pathToFileURL(path.resolve(cwd, moduleRef)).href;
+  }
+  return moduleRef;
+}
+
+function assertPdfFeaturePlugin(moduleRef: string, plugin: unknown): asserts plugin is PdfFeaturePlugin {
+  if (!plugin || typeof plugin !== "object") {
+    throw new Error(`PDF feature plugin '${moduleRef}' does not export a valid plugin object.`);
+  }
+
+  const candidate = plugin as Partial<PdfFeaturePlugin>;
+  if (!candidate.id || typeof candidate.id !== "string") {
+    throw new Error(`PDF feature plugin '${moduleRef}' is missing string 'id'.`);
+  }
+}
+
+async function importPdfFeaturePlugin(moduleRef: string): Promise<PdfFeaturePlugin> {
+  let imported: Record<string, unknown>;
+  try {
+    imported = await import(moduleRef);
+  } catch (error) {
+    throw new Error(
+      `Failed to load PDF feature plugin '${moduleRef}'. Install it and ensure it is resolvable. Cause: ${error instanceof Error ? error.message : String(error)}`
+    );
+  }
+
+  const plugin = imported.default ?? imported.pdfFeaturePlugin ?? imported.plugin;
+  assertPdfFeaturePlugin(moduleRef, plugin);
+  return plugin;
+}
+
+export async function loadPdfFeaturePlugins(options: {
+  cwd: string;
+  pluginRefs: string[];
+  preloaded?: PdfFeaturePlugin[];
+}): Promise<PdfFeaturePlugin[]> {
+  const plugins: PdfFeaturePlugin[] = [];
+  const preloadedById = new Map((options.preloaded ?? []).map((plugin) => [plugin.id, plugin]));
+
+  for (const pluginRef of options.pluginRefs) {
+    const preloaded = preloadedById.get(pluginRef);
+    const plugin = preloaded ?? (await importPdfFeaturePlugin(resolveModuleReference(options.cwd, pluginRef)));
+    const alreadyLoaded = plugins.some((candidate) => candidate.id === plugin.id);
+    if (alreadyLoaded) {
+      continue;
+    }
+    plugins.push(plugin);
+  }
+
+  return plugins;
+}
+
+export async function runPdfFeatureDoctorChecks(options: {
+  cwd: string;
+  config: DFactoryConfig;
+  plugins: PdfFeaturePlugin[];
+}): Promise<DoctorCheckResult[]> {
+  const checks: DoctorCheckResult[] = [];
+  checks.push({
+    name: "PDF feature plugins",
+    ok: true,
+    message: options.plugins.length
+      ? `Loaded PDF feature plugins: ${options.plugins.map((plugin) => plugin.id).join(", ")}`
+      : "No PDF feature plugins configured"
+  });
+
+  for (const plugin of options.plugins) {
+    if (!plugin.doctorChecks) {
+      continue;
+    }
+
+    const pluginChecks = await plugin.doctorChecks({
+      cwd: options.cwd,
+      config: options.config
+    });
+    checks.push(...pluginChecks);
+  }
+
+  return checks;
+}
+
 export class PlaywrightPdfRenderer implements PdfRenderer {
   private browserPromise: Promise<Browser> | undefined;
   private readonly semaphore: Semaphore;
   private readonly defaultTimeoutMs: number;
+  private readonly defaultPdfOptions: PdfOptionRecord;
+  private readonly plugins: PdfFeaturePlugin[];
 
-  constructor(options?: { poolSize?: number; timeoutMs?: number }) {
+  constructor(options?: {
+    poolSize?: number;
+    timeoutMs?: number;
+    defaults?: PdfOptionRecord;
+    plugins?: PdfFeaturePlugin[];
+  }) {
     this.semaphore = new Semaphore(options?.poolSize ?? 4);
     this.defaultTimeoutMs = options?.timeoutMs ?? 30000;
+    this.defaultPdfOptions = {
+      format: "A4",
+      printBackground: true,
+      preferCSSPageSize: true,
+      ...(options?.defaults ?? {})
+    };
+    this.plugins = options?.plugins ?? [];
   }
 
   private getBrowser(): Promise<Browser> {
@@ -62,24 +379,105 @@ export class PlaywrightPdfRenderer implements PdfRenderer {
     return this.browserPromise;
   }
 
-  async htmlToPdf(html: string, options?: PdfRenderOptions): Promise<Buffer> {
+  resolveFeatures(options?: {
+    templateFeatures?: PdfTemplateConfig;
+    featuresOverride?: TemplatePdfFeatureOverrides;
+  }): PdfTemplateConfig {
+    return mergePdfTemplateConfig(options?.templateFeatures, options?.featuresOverride);
+  }
+
+  async preflight(html: string, options?: PdfRenderOptions): Promise<PdfPreflightResult> {
+    const resolvedFeatures = this.resolveFeatures({
+      templateFeatures: options?.templateFeatures,
+      featuresOverride: options?.features
+    });
+
+    const context: PdfFeatureHtmlContext = {
+      templateId: options?.templateId,
+      templateMeta: options?.templateMeta,
+      mode: options?.mode,
+      profile: options?.profile,
+      payload: options?.payload,
+      templateFeatures: options?.templateFeatures,
+      featuresOverride: options?.features,
+      resolvedFeatures,
+      html,
+      diagnostics: [],
+      options: {}
+    };
+
+    await runHtmlStage(this.plugins, "htmlPre", context);
+    await runHtmlStage(this.plugins, "htmlPost", context);
+    await collectDiagnostics(this.plugins, "preflight", context);
+
+    return {
+      html: context.html,
+      diagnostics: context.diagnostics,
+      resolvedFeatures
+    };
+  }
+
+  async htmlToPdf(html: string, options?: PdfRenderOptions): Promise<PdfRenderResult> {
     const release = await this.semaphore.acquire();
     try {
+      const preflight = await this.preflight(html, options);
       const browser = await this.getBrowser();
       const context = await browser.newContext();
       const page = await context.newPage();
 
       page.setDefaultNavigationTimeout(options?.timeoutMs ?? this.defaultTimeoutMs);
-      await page.setContent(html, { waitUntil: "networkidle" });
+      await page.setContent(preflight.html, { waitUntil: "networkidle" });
 
-      const pdf = await page.pdf({
-        format: "A4",
-        printBackground: true,
+      const featurePdfOptions = toPdfPageOptions(preflight.resolvedFeatures, {
+        templateId: options?.templateId,
+        title: options?.templateMeta?.title
+      });
+      const effectivePdfOptions: PdfOptionRecord = {
+        ...this.defaultPdfOptions,
+        ...featurePdfOptions,
         ...(options?.pdf ?? {})
-      } as Parameters<typeof page.pdf>[0]);
+      };
 
+      const pdfRaw = await page.pdf(effectivePdfOptions as Parameters<typeof page.pdf>[0]);
       await context.close();
-      return Buffer.from(pdf);
+
+      const htmlContext: PdfFeatureHtmlContext = {
+        templateId: options?.templateId,
+        templateMeta: options?.templateMeta,
+        mode: options?.mode,
+        profile: options?.profile,
+        payload: options?.payload,
+        templateFeatures: options?.templateFeatures,
+        featuresOverride: options?.features,
+        resolvedFeatures: preflight.resolvedFeatures,
+        html: preflight.html,
+        diagnostics: [...preflight.diagnostics],
+        options: effectivePdfOptions
+      };
+
+      const pdfContext: PdfFeaturePdfContext = {
+        ...htmlContext,
+        pdf: Buffer.from(pdfRaw)
+      };
+
+      for (const plugin of this.plugins) {
+        if (!plugin.pdfPost) {
+          continue;
+        }
+        const maybePdf = await plugin.pdfPost(pdfContext);
+        if (Buffer.isBuffer(maybePdf)) {
+          pdfContext.pdf = maybePdf;
+        }
+      }
+
+      await collectDiagnostics(this.plugins, "diagnostics", htmlContext);
+
+      return {
+        pdf: pdfContext.pdf,
+        diagnostics: htmlContext.diagnostics,
+        resolvedFeatures: preflight.resolvedFeatures,
+        effectivePdfOptions
+      };
     } finally {
       release();
     }
@@ -99,6 +497,8 @@ export class PlaywrightPdfRenderer implements PdfRenderer {
 export function createPlaywrightPdfRenderer(options?: {
   poolSize?: number;
   timeoutMs?: number;
+  defaults?: PdfOptionRecord;
+  plugins?: PdfFeaturePlugin[];
 }): PdfRenderer {
   return new PlaywrightPdfRenderer(options);
 }

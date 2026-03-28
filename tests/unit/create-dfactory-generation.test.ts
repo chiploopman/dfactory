@@ -39,15 +39,19 @@ describe("create-dfactory generation", () => {
     const config = await fs.readFile(path.join(cwd, "dfactory.config.ts"), "utf8");
     const template = await fs.readFile(path.join(cwd, "src/templates/invoice/template.tsx"), "utf8");
     const packageJson = JSON.parse(await fs.readFile(path.join(cwd, "package.json"), "utf8")) as {
-      devDependencies?: Record<string, string>;
+      dependencies?: Record<string, string>;
     };
 
     expect(config).toContain("\"@dfactory/framework-react\"");
     expect(config).toContain("\"@dfactory/module-loader-bundle\"");
+    expect(config).toContain("\"@dfactory/pdf-feature-standard\"");
     expect(template).toContain("framework: \"react\"");
-    expect(packageJson.devDependencies?.["@dfactory/framework-react"]).toBe("latest");
-    expect(packageJson.devDependencies?.["@dfactory/module-loader-bundle"]).toBe("latest");
-    expect(packageJson.devDependencies?.["@dfactory/framework-vue"]).toBeUndefined();
+    expect(template).toContain("defineTemplate");
+    expect(packageJson.dependencies?.["@dfactory/framework-react"]).toBe("latest");
+    expect(packageJson.dependencies?.["@dfactory/module-loader-bundle"]).toBe("latest");
+    expect(packageJson.dependencies?.["@dfactory/pdf-feature-standard"]).toBe("latest");
+    expect(packageJson.dependencies?.["@dfactory/template-kit"]).toBe("latest");
+    expect(packageJson.dependencies?.["@dfactory/framework-vue"]).toBeUndefined();
   });
 
   it("scaffolds vue plugin config and template files", async () => {
@@ -75,14 +79,18 @@ describe("create-dfactory generation", () => {
     const template = await fs.readFile(path.join(cwd, "src/templates/invoice/template.ts"), "utf8");
     const sfc = await fs.readFile(path.join(cwd, "src/templates/invoice/InvoiceTemplate.vue"), "utf8");
     const packageJson = JSON.parse(await fs.readFile(path.join(cwd, "package.json"), "utf8")) as {
-      devDependencies?: Record<string, string>;
+      dependencies?: Record<string, string>;
     };
 
     expect(config).toContain("\"@dfactory/framework-vue\"");
     expect(config).toContain("\"@dfactory/module-loader-vite\"");
+    expect(config).toContain("\"@dfactory/pdf-feature-standard\"");
     expect(template).toContain("framework: \"vue\"");
+    expect(template).toContain("defineTemplate");
     expect(sfc).toContain("<template>");
-    expect(packageJson.devDependencies?.["@dfactory/framework-vue"]).toBe("latest");
-    expect(packageJson.devDependencies?.["@dfactory/module-loader-vite"]).toBe("latest");
+    expect(packageJson.dependencies?.["@dfactory/framework-vue"]).toBe("latest");
+    expect(packageJson.dependencies?.["@dfactory/module-loader-vite"]).toBe("latest");
+    expect(packageJson.dependencies?.["@dfactory/pdf-feature-standard"]).toBe("latest");
+    expect(packageJson.dependencies?.["@dfactory/template-kit"]).toBe("latest");
   });
 });

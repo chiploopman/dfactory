@@ -6,7 +6,10 @@ import fastifyStatic from "@fastify/static";
 import swagger from "@fastify/swagger";
 import swaggerUi from "@fastify/swagger-ui";
 import { createRegistry } from "@dfactory/core";
-import { createPlaywrightPdfRenderer } from "@dfactory/renderer-playwright";
+import {
+  createPlaywrightPdfRenderer,
+  loadPdfFeaturePlugins
+} from "@dfactory/renderer-playwright";
 import chokidar from "chokidar";
 import Fastify from "fastify";
 import { z } from "zod";
@@ -14,6 +17,7 @@ import type { FSWatcher } from "chokidar";
 
 import { authorizeRequest } from "./auth";
 import type { DFactoryServerOptions, DocumentRequest } from "./types";
+import type { TemplatePdfFeatureOverrides } from "@dfactory/core";
 
 const documentRequestSchema = z.object({
   templateId: z.string().min(1),
@@ -22,7 +26,23 @@ const documentRequestSchema = z.object({
   options: z
     .object({
       timeoutMs: z.number().int().positive().optional(),
-      pdf: z.record(z.string(), z.unknown()).optional()
+      pdf: z.record(z.string(), z.unknown()).optional(),
+      profile: z.string().optional(),
+      features: z.record(z.string(), z.unknown()).optional()
+    })
+    .optional()
+});
+
+const preflightRequestSchema = z.object({
+  templateId: z.string().min(1),
+  payload: z.unknown(),
+  mode: z.enum(["html", "pdf"]).optional(),
+  options: z
+    .object({
+      timeoutMs: z.number().int().positive().optional(),
+      pdf: z.record(z.string(), z.unknown()).optional(),
+      profile: z.string().optional(),
+      features: z.record(z.string(), z.unknown()).optional()
     })
     .optional()
 });
@@ -58,9 +78,15 @@ export async function createDFactoryServer(options: DFactoryServerOptions) {
   });
 
   const config = registry.getConfig();
+  const pdfFeaturePlugins = await loadPdfFeaturePlugins({
+    cwd: options.cwd,
+    pluginRefs: config.renderer.pdfPlugins ?? []
+  });
   const renderer = createPlaywrightPdfRenderer({
     poolSize: config.renderer.poolSize,
-    timeoutMs: config.renderer.timeoutMs
+    timeoutMs: config.renderer.timeoutMs,
+    defaults: config.renderer.defaults,
+    plugins: pdfFeaturePlugins
   });
   let watcher: FSWatcher | undefined;
 
@@ -116,6 +142,7 @@ export async function createDFactoryServer(options: DFactoryServerOptions) {
   app.get("/api/runtime", async () => ({
     isProduction,
     runtime: registry.getRuntimeInfo(),
+    pdfFeaturePlugins: pdfFeaturePlugins.map((plugin) => plugin.id),
     ui: {
       exposeInProd: config.ui.exposeInProd,
       sourceInProd: config.ui.sourceInProd,
@@ -143,7 +170,9 @@ export async function createDFactoryServer(options: DFactoryServerOptions) {
         meta: details.meta,
         framework: details.framework,
         filePath: details.filePath,
-        schema: details.schema
+        schema: details.schema,
+        pdf: details.pdf,
+        examples: details.examples ?? []
       };
     } catch (error) {
       return reply.code(404).send({
@@ -158,6 +187,27 @@ export async function createDFactoryServer(options: DFactoryServerOptions) {
       return {
         templateId: request.params.id,
         schema: registry.getTemplateSchema(request.params.id)
+      };
+    } catch (error) {
+      return reply.code(404).send({
+        error: "Template not found",
+        message: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
+  app.get<{ Params: { id: string } }>("/api/templates/:id/features", async (request, reply) => {
+    try {
+      const template = registry.getTemplate(request.params.id);
+      const features = renderer.resolveFeatures({
+        templateFeatures: template.module.pdf
+      });
+
+      return {
+        templateId: request.params.id,
+        features,
+        examples: template.module.examples ?? [],
+        plugins: pdfFeaturePlugins.map((plugin) => plugin.id)
       };
     } catch (error) {
       return reply.code(404).send({
@@ -186,6 +236,64 @@ export async function createDFactoryServer(options: DFactoryServerOptions) {
     }
   });
 
+  app.post("/api/document/preflight", async (request, reply) => {
+    const parsed = preflightRequestSchema.safeParse(request.body);
+    if (!parsed.success) {
+      return reply.code(400).send({
+        error: "Validation error",
+        message: parsed.error.message
+      });
+    }
+
+    const mode = parsed.data.mode ?? "pdf";
+
+    try {
+      const rendered = await registry.renderTemplate(parsed.data.templateId, parsed.data.payload, {
+        mode,
+        profile: parsed.data.options?.profile,
+        features: parsed.data.options?.features as TemplatePdfFeatureOverrides | undefined,
+        runId: request.id
+      });
+
+      const template = registry.getTemplate(parsed.data.templateId);
+      const preflight = await renderer.preflight(rendered.html, {
+        timeoutMs: parsed.data.options?.timeoutMs,
+        pdf: parsed.data.options?.pdf,
+        templateId: parsed.data.templateId,
+        templateMeta: template.meta,
+        mode,
+        profile: parsed.data.options?.profile,
+        payload: parsed.data.payload,
+        templateFeatures: rendered.templatePdfConfig,
+        features: parsed.data.options?.features as TemplatePdfFeatureOverrides | undefined
+      });
+
+      return {
+        ok: true,
+        mode,
+        templateId: parsed.data.templateId,
+        diagnostics: {
+          render: rendered.diagnostics,
+          features: preflight.diagnostics
+        },
+        resolvedFeatures: preflight.resolvedFeatures,
+        generatedAt: new Date().toISOString()
+      };
+    } catch (error) {
+      if (isPayloadValidationError(error)) {
+        return reply.code(400).send({
+          error: "Payload validation error",
+          message: error.message
+        });
+      }
+
+      return reply.code(500).send({
+        error: "Preflight failed",
+        message: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
   app.post<{ Body: DocumentRequest }>("/api/document/preview", async (request, reply) => {
     const parsed = documentRequestSchema.safeParse(request.body);
     if (!parsed.success) {
@@ -196,25 +304,48 @@ export async function createDFactoryServer(options: DFactoryServerOptions) {
     }
 
     try {
-      const rendered = await registry.renderTemplate(parsed.data.templateId, parsed.data.payload);
+      const rendered = await registry.renderTemplate(parsed.data.templateId, parsed.data.payload, {
+        mode: parsed.data.mode,
+        profile: parsed.data.options?.profile,
+        features: parsed.data.options?.features as TemplatePdfFeatureOverrides | undefined,
+        runId: request.id
+      });
       if (parsed.data.mode === "html") {
+        const preflight = await renderer.preflight(rendered.html, {
+          templateId: parsed.data.templateId,
+          templateMeta: registry.getTemplate(parsed.data.templateId).meta,
+          mode: parsed.data.mode,
+          profile: parsed.data.options?.profile,
+          payload: parsed.data.payload,
+          templateFeatures: rendered.templatePdfConfig,
+          features: parsed.data.options?.features as TemplatePdfFeatureOverrides | undefined
+        });
         return {
           mode: "html",
           templateId: parsed.data.templateId,
           html: rendered.html,
           diagnostics: rendered.diagnostics,
+          featureDiagnostics: preflight.diagnostics,
+          resolvedFeatures: preflight.resolvedFeatures,
           generatedAt: new Date().toISOString()
         };
       }
 
-      const pdf = await renderer.htmlToPdf(rendered.html, {
+      const pdfResult = await renderer.htmlToPdf(rendered.html, {
         timeoutMs: parsed.data.options?.timeoutMs,
-        pdf: parsed.data.options?.pdf
+        pdf: parsed.data.options?.pdf,
+        templateId: parsed.data.templateId,
+        templateMeta: registry.getTemplate(parsed.data.templateId).meta,
+        mode: parsed.data.mode,
+        profile: parsed.data.options?.profile,
+        payload: parsed.data.payload,
+        templateFeatures: rendered.templatePdfConfig,
+        features: parsed.data.options?.features as TemplatePdfFeatureOverrides | undefined
       });
 
       reply.header("content-type", "application/pdf");
       reply.header("content-disposition", `inline; filename=\"${parsed.data.templateId}-preview.pdf\"`);
-      return reply.send(pdf);
+      return reply.send(pdfResult.pdf);
     } catch (error) {
       if (isPayloadValidationError(error)) {
         return reply.code(400).send({
@@ -240,25 +371,39 @@ export async function createDFactoryServer(options: DFactoryServerOptions) {
     }
 
     try {
-      const rendered = await registry.renderTemplate(parsed.data.templateId, parsed.data.payload);
+      const rendered = await registry.renderTemplate(parsed.data.templateId, parsed.data.payload, {
+        mode: parsed.data.mode,
+        profile: parsed.data.options?.profile,
+        features: parsed.data.options?.features as TemplatePdfFeatureOverrides | undefined,
+        runId: request.id
+      });
 
       if (parsed.data.mode === "html") {
         return {
           mode: "html",
           templateId: parsed.data.templateId,
           html: rendered.html,
+          diagnostics: rendered.diagnostics,
+          resolvedFeatures: rendered.templatePdfConfig,
           generatedAt: new Date().toISOString()
         };
       }
 
-      const pdf = await renderer.htmlToPdf(rendered.html, {
+      const pdfResult = await renderer.htmlToPdf(rendered.html, {
         timeoutMs: parsed.data.options?.timeoutMs,
-        pdf: parsed.data.options?.pdf
+        pdf: parsed.data.options?.pdf,
+        templateId: parsed.data.templateId,
+        templateMeta: registry.getTemplate(parsed.data.templateId).meta,
+        mode: parsed.data.mode,
+        profile: parsed.data.options?.profile,
+        payload: parsed.data.payload,
+        templateFeatures: rendered.templatePdfConfig,
+        features: parsed.data.options?.features as TemplatePdfFeatureOverrides | undefined
       });
 
       reply.header("content-type", "application/pdf");
       reply.header("content-disposition", `attachment; filename=\"${parsed.data.templateId}.pdf\"`);
-      return reply.send(pdf);
+      return reply.send(pdfResult.pdf);
     } catch (error) {
       if (isPayloadValidationError(error)) {
         return reply.code(400).send({

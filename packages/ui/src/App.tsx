@@ -42,9 +42,11 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
   fetchRuntime,
   fetchTemplateSchema,
+  fetchTemplateFeatures,
   fetchTemplateSource,
   fetchTemplates,
   generateDocument,
+  preflightDocument,
   previewDocument,
   type RenderMode,
 } from "@/lib/api"
@@ -83,6 +85,7 @@ export default function App() {
   const [templates, setTemplates] = useState<TemplateSummary[]>([])
   const [selectedId, setSelectedId] = useState<string>()
   const [schemaJson, setSchemaJson] = useState<string>("{}")
+  const [featuresJson, setFeaturesJson] = useState<string>("{}")
   const [sourceCode, setSourceCode] = useState<string>("// Source unavailable")
   const [previewHtml, setPreviewHtml] = useState<string>()
   const [previewPdfUrl, setPreviewPdfUrl] = useState<string>()
@@ -156,8 +159,16 @@ export default function App() {
   }
 
   async function loadTemplateAssets(templateId: string) {
-    const [schema] = await Promise.all([fetchTemplateSchema(templateId)])
+    const [schema, features] = await Promise.all([
+      fetchTemplateSchema(templateId),
+      fetchTemplateFeatures(templateId),
+    ])
     setSchemaJson(pretty(schema))
+    setFeaturesJson(pretty(features.features))
+
+    if (features.examples.length > 0) {
+      setPayloadText(pretty(features.examples[0].payload))
+    }
 
     if (sourceEnabled) {
       try {
@@ -271,6 +282,25 @@ export default function App() {
 
     try {
       const payload = readPayload()
+      const preflight = await preflightDocument({
+        templateId: selectedTemplate.id,
+        payload,
+        mode,
+      })
+      const featureDiagnostics = preflight.diagnostics.features as Array<{
+        level?: "info" | "warn" | "error"
+        message?: string
+      }>
+      const warningCount = featureDiagnostics.filter((item) => item.level === "warn")
+        .length
+      const errorCount = featureDiagnostics.filter((item) => item.level === "error")
+        .length
+      if (errorCount > 0) {
+        toast.error(`Preflight reported ${errorCount} feature error(s)`)
+      } else if (warningCount > 0) {
+        toast.warning(`Preflight reported ${warningCount} feature warning(s)`)
+      }
+
       const response = await previewDocument({
         templateId: selectedTemplate.id,
         payload,
@@ -315,6 +345,18 @@ export default function App() {
 
     try {
       const payload = readPayload()
+      const preflight = await preflightDocument({
+        templateId: selectedTemplate.id,
+        payload,
+        mode,
+      })
+      const featureDiagnostics = preflight.diagnostics.features as Array<{
+        level?: "info" | "warn" | "error"
+      }>
+      if (featureDiagnostics.some((item) => item.level === "error")) {
+        throw new Error("Preflight reported feature errors. Fix template or payload before generate.")
+      }
+
       const response = await generateDocument({
         templateId: selectedTemplate.id,
         payload,
@@ -361,12 +403,20 @@ export default function App() {
         ) : null}
 
         {activePanel.id === "schema" ? (
-          <CodeEditor
-            value={schemaJson}
-            config={getInspectorEditorConfig({ panel: "schema" })}
-            className="h-full"
-            data-testid="schema-view"
-          />
+          <div className="grid h-full min-h-0 gap-3 md:grid-cols-2">
+            <CodeEditor
+              value={schemaJson}
+              config={getInspectorEditorConfig({ panel: "schema" })}
+              className="h-full"
+              data-testid="schema-view"
+            />
+            <CodeEditor
+              value={featuresJson}
+              config={getInspectorEditorConfig({ panel: "schema" })}
+              className="h-full"
+              data-testid="features-view"
+            />
+          </div>
         ) : null}
 
         {activePanel.id === "source" ? (

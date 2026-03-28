@@ -34,7 +34,17 @@ const configSchema = z.object({
     .object({
       engine: z.literal("playwright").optional(),
       poolSize: z.number().int().positive().optional(),
-      timeoutMs: z.number().int().positive().optional()
+      timeoutMs: z.number().int().positive().optional(),
+      pdfPlugins: z.array(z.string()).optional(),
+      defaults: z
+        .object({
+          format: z.string().optional(),
+          printBackground: z.boolean().optional(),
+          preferCSSPageSize: z.boolean().optional(),
+          tagged: z.boolean().optional(),
+          outline: z.boolean().optional()
+        })
+        .optional()
     })
     .optional()
 });
@@ -79,7 +89,13 @@ export async function loadDFactoryConfig(
         moduleLoader: DEFAULT_CONFIG.moduleLoader,
         auth: { ...DEFAULT_CONFIG.auth, apiKeys: [...(DEFAULT_CONFIG.auth.apiKeys ?? [])] },
         ui: { ...DEFAULT_CONFIG.ui },
-        renderer: { ...DEFAULT_CONFIG.renderer }
+        renderer: {
+          ...DEFAULT_CONFIG.renderer,
+          pdfPlugins: [...(DEFAULT_CONFIG.renderer.pdfPlugins ?? [])],
+          defaults: {
+            ...(DEFAULT_CONFIG.renderer.defaults ?? {})
+          }
+        }
       }
     };
   }
@@ -118,7 +134,12 @@ export async function loadDFactoryConfig(
     renderer: {
       engine: parsed.renderer?.engine ?? DEFAULT_CONFIG.renderer.engine,
       poolSize: parsed.renderer?.poolSize ?? DEFAULT_CONFIG.renderer.poolSize,
-      timeoutMs: parsed.renderer?.timeoutMs ?? DEFAULT_CONFIG.renderer.timeoutMs
+      timeoutMs: parsed.renderer?.timeoutMs ?? DEFAULT_CONFIG.renderer.timeoutMs,
+      pdfPlugins: parsed.renderer?.pdfPlugins ?? [...(DEFAULT_CONFIG.renderer.pdfPlugins ?? [])],
+      defaults: {
+        ...DEFAULT_CONFIG.renderer.defaults,
+        ...(parsed.renderer?.defaults ?? {})
+      }
     }
   };
 
