@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 
 function getProdUrl(projectName: string): string {
   if (projectName.startsWith("vue-")) {
@@ -6,6 +6,15 @@ function getProdUrl(projectName: string): string {
   }
 
   return "http://127.0.0.1:3220";
+}
+
+async function setCodeMirrorValue(page: Page, testId: string, value: string) {
+  const editorContent = page.getByTestId(testId).locator(".cm-content").first();
+  await expect(editorContent).toBeVisible();
+  await editorContent.click();
+  await page.keyboard.press(process.platform === "darwin" ? "Meta+a" : "Control+a");
+  await page.keyboard.press("Backspace");
+  await page.keyboard.insertText(value);
 }
 
 test("dev mode: catalog, payload edit, html/pdf preview, generate, dock panel behavior", async ({ page }) => {
@@ -19,8 +28,11 @@ test("dev mode: catalog, payload edit, html/pdf preview, generate, dock panel be
   await expect(page.getByTestId("bottom-panel")).toBeVisible();
   await expect(page.getByTestId("dock-tab-payload")).toHaveAttribute("aria-selected", "true");
   await expect(page.getByTestId("payload-editor")).toBeVisible();
+  await expect(page.getByTestId("payload-editor").locator(".cm-editor")).toBeVisible();
 
-  await page.getByTestId("payload-editor").fill(
+  await setCodeMirrorValue(
+    page,
+    "payload-editor",
     JSON.stringify(
       {
         invoiceNumber: "INV-2026",
@@ -140,6 +152,7 @@ test("dev mode: catalog, payload edit, html/pdf preview, generate, dock panel be
 
   await page.getByTestId("dock-tab-schema").click();
   await expect(page.getByTestId("bottom-panel")).toBeVisible();
+  await expect(page.getByTestId("schema-view").locator(".cm-editor")).toBeVisible();
   await expect(page.getByTestId("schema-view")).toContainText("invoiceNumber");
 
   await page.getByTestId("dock-tab-schema").click();
@@ -152,6 +165,7 @@ test("dev mode: catalog, payload edit, html/pdf preview, generate, dock panel be
 
   await page.getByTestId("dock-tab-source").click();
   await expect(page.getByTestId("bottom-panel")).toBeVisible();
+  await expect(page.getByTestId("source-view").locator(".cm-editor")).toBeVisible();
   await expect(page.getByTestId("source-view")).toContainText("export const meta");
 
   await page.getByTestId("dock-tab-playground").click();
@@ -172,8 +186,10 @@ test("prod mode: source and playground tabs are hidden by default", async ({ pag
   await expect(page.getByTestId("dock-tab-playground")).toHaveCount(0);
   await expect(page.getByTestId("bottom-panel")).toBeVisible();
   await expect(page.getByTestId("payload-editor")).toBeVisible();
+  await expect(page.getByTestId("payload-editor").locator(".cm-editor")).toBeVisible();
 
   await page.getByTestId("dock-tab-schema").click();
   await expect(page.getByTestId("bottom-panel")).toBeVisible();
+  await expect(page.getByTestId("schema-view").locator(".cm-editor")).toBeVisible();
   await expect(page.getByTestId("schema-view")).toContainText("invoiceNumber");
 });

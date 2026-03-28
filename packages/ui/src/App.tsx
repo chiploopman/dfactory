@@ -22,6 +22,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
+import { CodeEditor } from "@/components/ui/code-editor"
 import {
   Empty,
   EmptyContent,
@@ -38,7 +39,6 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Separator } from "@/components/ui/separator"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Textarea } from "@/components/ui/textarea"
 import {
   fetchRuntime,
   fetchTemplateSchema,
@@ -48,6 +48,7 @@ import {
   previewDocument,
   type RenderMode,
 } from "@/lib/api"
+import { getInspectorEditorConfig } from "@/lib/editor-config"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
 import type {
@@ -350,28 +351,34 @@ export default function App() {
     return (
       <div className="min-h-0 flex-1 p-4">
         {activePanel.id === "payload" ? (
-          <Textarea
+          <CodeEditor
             value={payloadText}
-            onChange={(event) => setPayloadText(event.target.value)}
-            className="h-full min-h-full font-mono text-xs"
+            onChange={setPayloadText}
+            config={getInspectorEditorConfig({ panel: "payload" })}
+            className="h-full"
             data-testid="payload-editor"
           />
         ) : null}
 
         {activePanel.id === "schema" ? (
-          <ScrollArea className="h-full rounded-lg border bg-muted/30">
-            <pre className="p-3 text-xs" data-testid="schema-view">
-              {schemaJson}
-            </pre>
-          </ScrollArea>
+          <CodeEditor
+            value={schemaJson}
+            config={getInspectorEditorConfig({ panel: "schema" })}
+            className="h-full"
+            data-testid="schema-view"
+          />
         ) : null}
 
         {activePanel.id === "source" ? (
-          <ScrollArea className="h-full rounded-lg border bg-muted/30">
-            <pre className="p-3 text-xs" data-testid="source-view">
-              {sourceCode}
-            </pre>
-          </ScrollArea>
+          <CodeEditor
+            value={sourceCode}
+            config={getInspectorEditorConfig({
+              panel: "source",
+              sourceFilePath: selectedTemplate?.filePath,
+            })}
+            className="h-full"
+            data-testid="source-view"
+          />
         ) : null}
 
         {activePanel.id === "playground" ? (
