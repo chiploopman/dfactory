@@ -40,6 +40,47 @@ test("dev mode: catalog, payload edit, html/pdf preview, generate, dock panel be
   await expect(
     page.locator("header").getByTestId("preview-mode-tabs"),
   ).toBeVisible();
+  const catalogLogo = page.getByTestId("catalog-logo");
+  await expect(catalogLogo).toBeVisible();
+  await expect(catalogLogo).toHaveText("dFactory");
+  const headerHeights = await page.evaluate(() => {
+    const sidebarHeader = document.querySelector("[data-slot='sidebar-header']");
+    const topbar = document.querySelector("header");
+    if (!sidebarHeader || !topbar) {
+      return null;
+    }
+    return {
+      sidebarHeight: sidebarHeader.getBoundingClientRect().height,
+      topbarHeight: topbar.getBoundingClientRect().height,
+    };
+  });
+  expect(headerHeights).toBeTruthy();
+  expect(
+    Math.abs((headerHeights?.sidebarHeight ?? 0) - (headerHeights?.topbarHeight ?? 0)),
+  ).toBeLessThanOrEqual(1);
+  const catalogColorTokens = await page.evaluate(() => {
+    const sidebarProbe = document.createElement("div");
+    sidebarProbe.style.backgroundColor = "var(--sidebar-primary)";
+    sidebarProbe.style.color = "var(--sidebar-primary-foreground)";
+    const primaryProbe = document.createElement("div");
+    primaryProbe.style.color = "var(--primary)";
+    document.body.appendChild(sidebarProbe);
+    document.body.appendChild(primaryProbe);
+    const sidebarStyles = getComputedStyle(sidebarProbe);
+    const primaryStyles = getComputedStyle(primaryProbe);
+    const colors = {
+      sidebarPrimaryBackground: sidebarStyles.backgroundColor,
+      sidebarPrimaryForeground: sidebarStyles.color,
+      primaryForeground: primaryStyles.color,
+    };
+    sidebarProbe.remove();
+    primaryProbe.remove();
+    return colors;
+  });
+  const logoColor = await catalogLogo.evaluate((element) => {
+    return getComputedStyle(element).color;
+  });
+  expect(logoColor).toBe(catalogColorTokens.primaryForeground);
 
   await templateSearchInput.fill("invoice-reference");
   await expect(page.locator("[data-template-id='invoice-reference']")).toBeVisible();
@@ -53,6 +94,30 @@ test("dev mode: catalog, payload edit, html/pdf preview, generate, dock panel be
   await templateSearchInput.fill("invoice");
   await expect(page.locator("[data-template-id='invoice']")).toBeVisible();
   await page.locator("[data-template-id='invoice']").click();
+  await expect(invoiceItem).toHaveAttribute("data-active", "true");
+  const invoiceItemBackground = await invoiceItem.evaluate((element) => {
+    return getComputedStyle(element).backgroundColor;
+  });
+  expect(invoiceItemBackground).toBe(catalogColorTokens.sidebarPrimaryBackground);
+  const selectedTemplateIdColor = await invoiceItem
+    .getByTestId("template-item-id")
+    .evaluate((element) => {
+      return getComputedStyle(element).color;
+    });
+  expect(selectedTemplateIdColor).toBe(catalogColorTokens.sidebarPrimaryForeground);
+  const invoiceReferenceItem = page.locator("[data-template-id='invoice-reference']");
+  await expect(invoiceReferenceItem).toBeVisible();
+  await expect(invoiceReferenceItem).toHaveAttribute("data-active", "false");
+  const invoiceReferenceBackground = await invoiceReferenceItem.evaluate((element) => {
+    return getComputedStyle(element).backgroundColor;
+  });
+  expect(invoiceReferenceBackground).not.toBe(catalogColorTokens.sidebarPrimaryBackground);
+  const unselectedTemplateIdColor = await invoiceReferenceItem
+    .getByTestId("template-item-id")
+    .evaluate((element) => {
+      return getComputedStyle(element).color;
+    });
+  expect(unselectedTemplateIdColor).not.toBe(catalogColorTokens.sidebarPrimaryForeground);
   await expect(page.getByTestId("topbar-preview-button")).toBeEnabled();
   await expect(page.getByTestId("bottom-dock")).toBeVisible();
   await expect(page.getByTestId("bottom-panel")).toBeVisible();

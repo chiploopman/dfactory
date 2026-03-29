@@ -37,8 +37,14 @@ export function TemplateCatalog({
 
   return (
     <Sidebar collapsible="none" className="h-full border-r">
-      <SidebarHeader className="h-14 justify-center border-b px-3 py-0">
-        <div className="relative">
+      <SidebarHeader className="h-14 flex-row items-center gap-3 border-b px-3 py-0">
+        <span
+          className="shrink-0 text-sm font-semibold tracking-tight text-primary"
+          data-testid="catalog-logo"
+        >
+          dFactory
+        </span>
+        <div className="relative min-w-0 flex-1">
           <Search className="pointer-events-none absolute top-1/2 left-2 size-4 -translate-y-1/2 text-muted-foreground" />
           <SidebarInput
             placeholder="Search templates"
@@ -59,6 +65,7 @@ export function TemplateCatalog({
                   <SidebarMenuButton
                     type="button"
                     isActive={selectedId === template.id}
+                    variant="primary"
                     onClick={() => onSelect(template.id)}
                     className="h-auto items-start py-2.5"
                     data-template-id={template.id}
@@ -71,7 +78,7 @@ export function TemplateCatalog({
                         {template.meta.title}
                       </span>
                       <span
-                        className="truncate text-xs text-muted-foreground"
+                        className="truncate text-xs text-muted-foreground group-data-active/menu-button:text-sidebar-primary-foreground"
                         data-testid="template-item-id"
                       >
                         {template.id}
