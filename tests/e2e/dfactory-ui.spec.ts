@@ -37,6 +37,9 @@ test("dev mode: catalog, payload edit, html/pdf preview, generate, dock panel be
   const invoiceItem = page.locator("[data-template-id='invoice']");
   await expect(invoiceItem.getByTestId("template-item-name")).toContainText("Invoice");
   await expect(invoiceItem.getByTestId("template-item-id")).toHaveText("invoice");
+  await expect(
+    page.locator("header").getByTestId("preview-mode-tabs"),
+  ).toBeVisible();
 
   await templateSearchInput.fill("invoice-reference");
   await expect(page.locator("[data-template-id='invoice-reference']")).toBeVisible();
@@ -54,6 +57,15 @@ test("dev mode: catalog, payload edit, html/pdf preview, generate, dock panel be
   await expect(page.getByTestId("bottom-dock")).toBeVisible();
   await expect(page.getByTestId("bottom-panel")).toBeVisible();
   await expect(page.getByTestId("dock-tab-payload")).toHaveAttribute("aria-selected", "true");
+  await expect(page.getByTestId("preview-empty-html")).toBeVisible();
+  const emptyPreviewButton = page
+    .getByTestId("preview-empty-html")
+    .getByRole("button", { name: "Preview" });
+  await expect(emptyPreviewButton).toHaveAttribute("data-size", "default");
+  const emptyPreviewClass = await page.getByTestId("preview-empty-html").evaluate((element) => {
+    return element.className;
+  });
+  expect(emptyPreviewClass).toContain("size-full");
   await expect(page.getByTestId("payload-editor")).toBeVisible();
   await expect(page.getByTestId("payload-editor").locator(".cm-editor")).toBeVisible();
 
@@ -184,14 +196,7 @@ test("dev mode: catalog, payload edit, html/pdf preview, generate, dock panel be
   const panelBackground = await page.getByTestId("bottom-panel").evaluate((element) => {
     return getComputedStyle(element).backgroundColor;
   });
-  const workspaceBackground = await page
-    .locator("main [data-slot='card']")
-    .first()
-    .evaluate((element) => {
-      return getComputedStyle(element).backgroundColor;
-    });
   expect(panelBackground).not.toBe("rgba(0, 0, 0, 0)");
-  expect(panelBackground).not.toBe(workspaceBackground);
 
   const panelClassName = await page.getByTestId("bottom-panel").evaluate((element) => {
     return element.className;
@@ -209,8 +214,8 @@ test("dev mode: catalog, payload edit, html/pdf preview, generate, dock panel be
   const dockBounds = await page.getByTestId("bottom-dock").boundingBox();
   expect(viewport).toBeTruthy();
   expect(dockBounds).toBeTruthy();
-  expect(Math.abs((dockBounds?.x ?? 0) - 0)).toBeLessThanOrEqual(2);
-  expect(Math.abs((dockBounds?.width ?? 0) - (viewport?.width ?? 0))).toBeLessThanOrEqual(2);
+  expect((dockBounds?.x ?? 0)).toBeGreaterThan(100);
+  expect((dockBounds?.width ?? 0)).toBeLessThan((viewport?.width ?? 0) - 80);
   const resizeHandle = page.locator(".bottom-panel-resize-handle").first();
   await expect(resizeHandle).toBeVisible();
   const resizeHandleBounds = await resizeHandle.boundingBox();
@@ -261,8 +266,10 @@ test("dev mode: catalog, payload edit, html/pdf preview, generate, dock panel be
 
   await page.getByTestId("dock-tab-schema").click();
   await expect(page.getByTestId("bottom-panel")).toBeVisible();
+  await expect(page.getByTestId("bottom-panel-collapse")).toBeVisible();
   await page.getByTestId("bottom-panel-collapse").click();
   await expect(page.getByTestId("bottom-panel")).toHaveCount(0);
+  await expect(page.getByTestId("bottom-panel-collapse")).toHaveCount(0);
 
   await page.getByTestId("dock-tab-source").click();
   await expect(page.getByTestId("bottom-panel")).toBeVisible();

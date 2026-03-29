@@ -37,7 +37,7 @@ export function TemplateCatalog({
 
   return (
     <Sidebar collapsible="none" className="h-full border-r">
-      <SidebarHeader className="border-b p-3">
+      <SidebarHeader className="h-14 justify-center border-b px-3 py-0">
         <div className="relative">
           <Search className="pointer-events-none absolute top-1/2 left-2 size-4 -translate-y-1/2 text-muted-foreground" />
           <SidebarInput

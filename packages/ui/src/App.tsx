@@ -3,12 +3,11 @@ import { AnimatePresence, motion } from "framer-motion"
 import {
   AlertCircle,
   Braces,
-  ChevronsDown,
   Code2,
   Eye,
   FileJson2,
   FileText,
-  PlayCircle,
+  Minimize2,
   TerminalSquare,
 } from "lucide-react"
 
@@ -16,13 +15,6 @@ import { InspectorCodeExplorer } from "@/components/inspector-code-explorer"
 import { TemplateCatalog } from "@/components/template-catalog"
 import { Topbar } from "@/components/topbar"
 import { Button } from "@/components/ui/button"
-import {
-  Card,
-  CardAction,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card"
 import { CodeEditor } from "@/components/ui/code-editor"
 import {
   Empty,
@@ -41,7 +33,6 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { Separator } from "@/components/ui/separator"
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar"
 import { Spinner } from "@/components/ui/spinner"
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
   DEFAULT_SCHEMA_DOC_TAB_ID,
   resolveSchemaDocTabId,
@@ -599,7 +590,7 @@ export default function App() {
   function renderInspectorPanelContent() {
     return (
       <div className="flex h-full flex-col">
-        <div className="flex items-start justify-between gap-3 px-4 py-3">
+        <div className="flex items-start gap-3 px-4 py-3">
           <div className="flex flex-col gap-1">
             <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
               Inspector
@@ -609,16 +600,6 @@ export default function App() {
               {activePanel.label}
             </div>
           </div>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon-sm"
-            onClick={() => setPanelOpen(false)}
-            aria-label="Collapse bottom panel"
-            data-testid="bottom-panel-collapse"
-          >
-            <ChevronsDown className="h-4 w-4" />
-          </Button>
         </div>
         <Separator />
         {renderInspectorBody()}
@@ -636,108 +617,73 @@ export default function App() {
     return (
       <main className="relative min-h-0 flex-1 p-4">
         <div className="h-full min-h-0">
-          <Card className="h-full min-h-0 overflow-hidden">
-            <CardHeader className="pb-3">
-              <CardTitle className="flex items-center gap-2 text-sm">
-                <PlayCircle className="h-4 w-4" />
-                Live Preview
-              </CardTitle>
-              <CardAction>
-                <Tabs
-                  value={mode}
-                  onValueChange={(nextValue) => setMode(nextValue as RenderMode)}
-                  className="gap-0"
-                  data-testid="preview-mode-tabs"
-                >
-                  <TabsList>
-                    <TabsTrigger value="html" data-testid="preview-mode-html">
-                      HTML
-                    </TabsTrigger>
-                    <TabsTrigger value="pdf" data-testid="preview-mode-pdf">
-                      PDF
-                    </TabsTrigger>
-                  </TabsList>
-                </Tabs>
-              </CardAction>
-            </CardHeader>
-            <CardContent className="min-h-0 h-[calc(100%-78px)]">
-              {mode === "html" ? (
-                previewHtml ? (
-                  <iframe
-                    title="Preview HTML"
-                    srcDoc={previewHtml}
-                    className="h-full w-full rounded-lg border bg-white"
-                    data-testid="preview-frame"
-                  />
-                ) : (
-                  <Empty
-                    className="h-full rounded-lg border bg-muted/15"
-                    data-testid="preview-empty-html"
-                  >
-                    <EmptyHeader>
-                      <EmptyMedia variant="icon">
-                        <Code2 />
-                      </EmptyMedia>
-                      <EmptyTitle>No HTML preview yet</EmptyTitle>
-                      <EmptyDescription>
-                        Run preview to render this template as HTML.
-                      </EmptyDescription>
-                    </EmptyHeader>
-                    <EmptyContent>
-                      <Button
-                        size="sm"
-                        onClick={runPreview}
-                        disabled={busy || !selectedTemplate}
-                      >
-                        {previewBusy ? (
-                          <Spinner data-icon="inline-start" />
-                        ) : (
-                          <Eye data-icon="inline-start" />
-                        )}
-                        {previewBusy ? "Previewing..." : "Preview"}
-                      </Button>
-                    </EmptyContent>
-                  </Empty>
-                )
-              ) : previewPdfUrl ? (
-                <iframe
-                  title="Preview PDF"
-                  src={previewPdfUrl}
-                  className="h-full w-full rounded-lg border bg-white"
-                  data-testid="preview-pdf-frame"
-                />
-              ) : (
-                <Empty
-                  className="h-full rounded-lg border bg-muted/15"
-                  data-testid="preview-empty-pdf"
-                >
-                  <EmptyHeader>
-                    <EmptyMedia variant="icon">
-                      <FileText />
-                    </EmptyMedia>
-                    <EmptyTitle>No PDF preview yet</EmptyTitle>
-                    <EmptyDescription>
-                      Run preview to generate and open a PDF preview.
-                    </EmptyDescription>
-                  </EmptyHeader>
-                  <EmptyContent>
-                    <Button
-                      size="sm"
-                      onClick={runPreview}
-                      disabled={busy || !selectedTemplate}
-                    >
-                      {previewBusy ? (
-                        <Spinner data-icon="inline-start" />
-                      ) : (
-                        <Eye data-icon="inline-start" />
-                      )}
-                      {previewBusy ? "Previewing..." : "Preview"}
-                    </Button>
-                  </EmptyContent>
-                </Empty>
-              )}
-            </CardContent>
-          </Card>
+          {mode === "html" ? (
+            previewHtml ? (
+              <iframe
+                title="Preview HTML"
+                srcDoc={previewHtml}
+                className="size-full rounded-lg border bg-white"
+                data-testid="preview-frame"
+              />
+            ) : (
+              <Empty
+                className="size-full rounded-lg border bg-muted/15"
+                data-testid="preview-empty-html"
+              >
+                <EmptyHeader>
+                  <EmptyMedia variant="icon">
+                    <Code2 />
+                  </EmptyMedia>
+                  <EmptyTitle>No HTML preview yet</EmptyTitle>
+                  <EmptyDescription>
+                    Run preview to render this template as HTML.
+                  </EmptyDescription>
+                </EmptyHeader>
+                <EmptyContent>
+                  <Button onClick={runPreview} disabled={busy || !selectedTemplate}>
+                    {previewBusy ? (
+                      <Spinner data-icon="inline-start" />
+                    ) : (
+                      <Eye data-icon="inline-start" />
+                    )}
+                    {previewBusy ? "Previewing..." : "Preview"}
+                  </Button>
+                </EmptyContent>
+              </Empty>
+            )
+          ) : previewPdfUrl ? (
+            <iframe
+              title="Preview PDF"
+              src={previewPdfUrl}
+              className="size-full rounded-lg border bg-white"
+              data-testid="preview-pdf-frame"
+            />
+          ) : (
+            <Empty
+              className="size-full rounded-lg border bg-muted/15"
+              data-testid="preview-empty-pdf"
+            >
+              <EmptyHeader>
+                <EmptyMedia variant="icon">
+                  <FileText />
+                </EmptyMedia>
+                <EmptyTitle>No PDF preview yet</EmptyTitle>
+                <EmptyDescription>
+                  Run preview to generate and open a PDF preview.
+                </EmptyDescription>
+              </EmptyHeader>
+              <EmptyContent>
+                <Button onClick={runPreview} disabled={busy || !selectedTemplate}>
+                  {previewBusy ? (
+                    <Spinner data-icon="inline-start" />
+                  ) : (
+                    <Eye data-icon="inline-start" />
+                  )}
+                  {previewBusy ? "Previewing..." : "Preview"}
+                </Button>
+              </EmptyContent>
+            </Empty>
+          )}
         </div>
 
         {error ? (
@@ -774,6 +720,8 @@ export default function App() {
       <SidebarInset className="min-h-0 pb-14">
         <Topbar
           selectedTemplate={selectedTemplate}
+          mode={mode}
+          onModeChange={setMode}
           onPreview={runPreview}
           onGenerate={runGenerate}
           busy={busy}
@@ -834,6 +782,59 @@ export default function App() {
             <div className="h-full">{renderWorkspace(true)}</div>
           )}
         </div>
+
+        <footer
+          className="absolute inset-x-0 bottom-0 z-40 border-t border-border/90 bg-muted/95 shadow-[0_-8px_20px_-16px_hsl(var(--foreground)/0.35)] backdrop-blur-md supports-[backdrop-filter]:bg-muted/85"
+          data-testid="bottom-dock"
+          data-sticky="true"
+        >
+          <div className="flex min-h-14 items-center gap-2 px-4">
+            <div
+              className="flex flex-1 items-center gap-2"
+              role="tablist"
+              aria-label="Template detail panels"
+              data-testid="bottom-dock-tablist"
+            >
+              {panelTabs.map((tab) => {
+                const isActive = panelOpen && activePanelTab === tab.id
+
+                return (
+                  <Button
+                    key={tab.id}
+                    type="button"
+                    role="tab"
+                    id={`dock-tab-${tab.id}`}
+                    aria-selected={isActive}
+                    aria-controls={`panel-${tab.id}`}
+                    aria-expanded={isActive}
+                    variant={isActive ? "default" : "ghost"}
+                    size="sm"
+                    className="shrink-0 gap-1.5"
+                    onClick={() => handleDockTabClick(tab.id)}
+                    data-testid={`dock-tab-${tab.id}`}
+                  >
+                    <tab.icon className="h-3.5 w-3.5" />
+                    {tab.label}
+                  </Button>
+                )
+              })}
+            </div>
+
+            {panelOpen ? (
+              <Button
+                type="button"
+                variant="outline"
+                size="icon-sm"
+                className="self-center"
+                onClick={() => setPanelOpen(false)}
+                aria-label="Collapse bottom panel"
+                data-testid="bottom-panel-collapse"
+              >
+                <Minimize2 />
+              </Button>
+            ) : null}
+          </div>
+        </footer>
       </SidebarInset>
 
       <AnimatePresence>
@@ -860,42 +861,6 @@ export default function App() {
         ) : null}
       </AnimatePresence>
 
-      <footer
-        className="absolute inset-x-0 bottom-0 z-40 border-t border-border/90 bg-muted/95 shadow-[0_-8px_20px_-16px_hsl(var(--foreground)/0.35)] backdrop-blur-md supports-[backdrop-filter]:bg-muted/85"
-        data-testid="bottom-dock"
-        data-sticky="true"
-      >
-        <div
-          className="flex min-h-14 items-center gap-2 px-4"
-          role="tablist"
-          aria-label="Template detail panels"
-          data-testid="bottom-dock-tablist"
-        >
-          {panelTabs.map((tab) => {
-            const isActive = panelOpen && activePanelTab === tab.id
-
-            return (
-              <Button
-                key={tab.id}
-                type="button"
-                role="tab"
-                id={`dock-tab-${tab.id}`}
-                aria-selected={isActive}
-                aria-controls={`panel-${tab.id}`}
-                aria-expanded={isActive}
-                variant={isActive ? "default" : "ghost"}
-                size="sm"
-                className="shrink-0 gap-1.5"
-                onClick={() => handleDockTabClick(tab.id)}
-                data-testid={`dock-tab-${tab.id}`}
-              >
-                <tab.icon className="h-3.5 w-3.5" />
-                {tab.label}
-              </Button>
-            )
-          })}
-        </div>
-      </footer>
     </SidebarProvider>
   )
 }
