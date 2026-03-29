@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useState, type CSSProperties } from "react"
 import { AnimatePresence, motion } from "framer-motion"
 import {
   AlertCircle,
@@ -39,6 +39,7 @@ import {
 } from "@/components/ui/resizable"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Separator } from "@/components/ui/separator"
+import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar"
 import { Spinner } from "@/components/ui/spinner"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
@@ -633,101 +634,53 @@ export default function App() {
       : "bottom-4"
 
     return (
-      <div className="flex h-full min-h-0">
-        <TemplateCatalog
-          templates={templates}
-          selectedId={selectedId}
-          query={query}
-          onQueryChange={setQuery}
-          onSelect={setSelectedId}
-        />
-
-        <main className="relative min-h-0 flex-1 p-4">
-          <div className="h-full min-h-0">
-            <Card className="h-full min-h-0 overflow-hidden">
-              <CardHeader className="pb-3">
-                <CardTitle className="flex items-center gap-2 text-sm">
-                  <PlayCircle className="h-4 w-4" />
-                  Live Preview
-                </CardTitle>
-                <CardAction>
-                  <Tabs
-                    value={mode}
-                    onValueChange={(nextValue) =>
-                      setMode(nextValue as RenderMode)
-                    }
-                    className="gap-0"
-                    data-testid="preview-mode-tabs"
-                  >
-                    <TabsList>
-                      <TabsTrigger value="html" data-testid="preview-mode-html">
-                        HTML
-                      </TabsTrigger>
-                      <TabsTrigger value="pdf" data-testid="preview-mode-pdf">
-                        PDF
-                      </TabsTrigger>
-                    </TabsList>
-                  </Tabs>
-                </CardAction>
-              </CardHeader>
-              <CardContent className="min-h-0 h-[calc(100%-78px)]">
-                {mode === "html" ? (
-                  previewHtml ? (
-                    <iframe
-                      title="Preview HTML"
-                      srcDoc={previewHtml}
-                      className="h-full w-full rounded-lg border bg-white"
-                      data-testid="preview-frame"
-                    />
-                  ) : (
-                    <Empty
-                      className="h-full rounded-lg border bg-muted/15"
-                      data-testid="preview-empty-html"
-                    >
-                      <EmptyHeader>
-                        <EmptyMedia variant="icon">
-                          <Code2 />
-                        </EmptyMedia>
-                        <EmptyTitle>No HTML preview yet</EmptyTitle>
-                        <EmptyDescription>
-                          Run preview to render this template as HTML.
-                        </EmptyDescription>
-                      </EmptyHeader>
-                      <EmptyContent>
-                        <Button
-                          size="sm"
-                          onClick={runPreview}
-                          disabled={busy || !selectedTemplate}
-                        >
-                          {previewBusy ? (
-                            <Spinner data-icon="inline-start" />
-                          ) : (
-                            <Eye data-icon="inline-start" />
-                          )}
-                          {previewBusy ? "Previewing..." : "Preview"}
-                        </Button>
-                      </EmptyContent>
-                    </Empty>
-                  )
-                ) : previewPdfUrl ? (
+      <main className="relative min-h-0 flex-1 p-4">
+        <div className="h-full min-h-0">
+          <Card className="h-full min-h-0 overflow-hidden">
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-sm">
+                <PlayCircle className="h-4 w-4" />
+                Live Preview
+              </CardTitle>
+              <CardAction>
+                <Tabs
+                  value={mode}
+                  onValueChange={(nextValue) => setMode(nextValue as RenderMode)}
+                  className="gap-0"
+                  data-testid="preview-mode-tabs"
+                >
+                  <TabsList>
+                    <TabsTrigger value="html" data-testid="preview-mode-html">
+                      HTML
+                    </TabsTrigger>
+                    <TabsTrigger value="pdf" data-testid="preview-mode-pdf">
+                      PDF
+                    </TabsTrigger>
+                  </TabsList>
+                </Tabs>
+              </CardAction>
+            </CardHeader>
+            <CardContent className="min-h-0 h-[calc(100%-78px)]">
+              {mode === "html" ? (
+                previewHtml ? (
                   <iframe
-                    title="Preview PDF"
-                    src={previewPdfUrl}
+                    title="Preview HTML"
+                    srcDoc={previewHtml}
                     className="h-full w-full rounded-lg border bg-white"
-                    data-testid="preview-pdf-frame"
+                    data-testid="preview-frame"
                   />
                 ) : (
                   <Empty
                     className="h-full rounded-lg border bg-muted/15"
-                    data-testid="preview-empty-pdf"
+                    data-testid="preview-empty-html"
                   >
                     <EmptyHeader>
                       <EmptyMedia variant="icon">
-                        <FileText />
+                        <Code2 />
                       </EmptyMedia>
-                      <EmptyTitle>No PDF preview yet</EmptyTitle>
+                      <EmptyTitle>No HTML preview yet</EmptyTitle>
                       <EmptyDescription>
-                        Run preview to generate and open a PDF preview.
+                        Run preview to render this template as HTML.
                       </EmptyDescription>
                     </EmptyHeader>
                     <EmptyContent>
@@ -745,95 +698,143 @@ export default function App() {
                       </Button>
                     </EmptyContent>
                   </Empty>
-                )}
-              </CardContent>
-            </Card>
-          </div>
-
-          {error ? (
-            <div
-              className={cn(
-                "absolute left-1/2 z-30 flex w-[min(44rem,calc(100%-2rem))] -translate-x-1/2 items-center gap-2 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700 shadow-sm",
-                errorPositionClass,
+                )
+              ) : previewPdfUrl ? (
+                <iframe
+                  title="Preview PDF"
+                  src={previewPdfUrl}
+                  className="h-full w-full rounded-lg border bg-white"
+                  data-testid="preview-pdf-frame"
+                />
+              ) : (
+                <Empty
+                  className="h-full rounded-lg border bg-muted/15"
+                  data-testid="preview-empty-pdf"
+                >
+                  <EmptyHeader>
+                    <EmptyMedia variant="icon">
+                      <FileText />
+                    </EmptyMedia>
+                    <EmptyTitle>No PDF preview yet</EmptyTitle>
+                    <EmptyDescription>
+                      Run preview to generate and open a PDF preview.
+                    </EmptyDescription>
+                  </EmptyHeader>
+                  <EmptyContent>
+                    <Button
+                      size="sm"
+                      onClick={runPreview}
+                      disabled={busy || !selectedTemplate}
+                    >
+                      {previewBusy ? (
+                        <Spinner data-icon="inline-start" />
+                      ) : (
+                        <Eye data-icon="inline-start" />
+                      )}
+                      {previewBusy ? "Previewing..." : "Preview"}
+                    </Button>
+                  </EmptyContent>
+                </Empty>
               )}
-              data-testid="error-banner"
-            >
-              <AlertCircle className="h-4 w-4" />
-              <span>{error}</span>
-            </div>
-          ) : null}
-        </main>
-      </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {error ? (
+          <div
+            className={cn(
+              "absolute left-1/2 z-30 flex w-[min(44rem,calc(100%-2rem))] -translate-x-1/2 items-center gap-2 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700 shadow-sm",
+              errorPositionClass,
+            )}
+            data-testid="error-banner"
+          >
+            <AlertCircle className="h-4 w-4" />
+            <span>{error}</span>
+          </div>
+        ) : null}
+      </main>
     )
   }
 
   return (
-    <div
-      className="relative flex h-screen flex-col overflow-hidden"
+    <SidebarProvider
+      defaultOpen
+      style={{ "--sidebar-width": "20rem" } as CSSProperties}
+      className="relative h-screen overflow-hidden"
       data-testid="dfactory-app"
     >
-      <Topbar
-        selectedTemplate={selectedTemplate}
-        onPreview={runPreview}
-        onGenerate={runGenerate}
-        busy={busy}
-        previewBusy={previewBusy}
-        generateBusy={generateBusy}
+      <TemplateCatalog
+        templates={templates}
+        selectedId={selectedId}
+        query={query}
+        onQueryChange={setQuery}
+        onSelect={setSelectedId}
       />
 
-      <div className="min-h-0 flex-1 pb-14">
-        {isDesktop ? (
-          panelOpen ? (
-            <ResizablePanelGroup
-              id="workspace-resizable-group"
-              orientation="vertical"
-              className="[&:has([data-separator=active])_iframe]:pointer-events-none"
-              resizeTargetMinimumSize={{ coarse: 40, fine: 16 }}
-              onLayoutChanged={(layout) => {
-                const nextBottomSize = layout["inspector-panel"]
-                if (typeof nextBottomSize === "number") {
-                  setDesktopPanelSize(
-                    Math.min(70, Math.max(24, nextBottomSize)),
-                  )
-                }
-              }}
-            >
-              <ResizablePanel
-                id="workspace-panel"
-                defaultSize={`${workspacePanelSize}%`}
-                minSize="30%"
+      <SidebarInset className="min-h-0 pb-14">
+        <Topbar
+          selectedTemplate={selectedTemplate}
+          onPreview={runPreview}
+          onGenerate={runGenerate}
+          busy={busy}
+          previewBusy={previewBusy}
+          generateBusy={generateBusy}
+        />
+
+        <div className="min-h-0 flex-1">
+          {isDesktop ? (
+            panelOpen ? (
+              <ResizablePanelGroup
+                id="workspace-resizable-group"
+                orientation="vertical"
+                className="[&:has([data-separator=active])_iframe]:pointer-events-none"
+                resizeTargetMinimumSize={{ coarse: 40, fine: 16 }}
+                onLayoutChanged={(layout) => {
+                  const nextBottomSize = layout["inspector-panel"]
+                  if (typeof nextBottomSize === "number") {
+                    setDesktopPanelSize(
+                      Math.min(70, Math.max(24, nextBottomSize)),
+                    )
+                  }
+                }}
               >
-                {renderWorkspace(false)}
-              </ResizablePanel>
-              <ResizableHandle
-                withHandle
-                className="bottom-panel-resize-handle bg-transparent"
-                data-testid="bottom-panel-resize-handle"
-              />
-              <ResizablePanel
-                id="inspector-panel"
-                defaultSize={`${clampedDesktopPanelSize}%`}
-                minSize="24%"
-                maxSize="70%"
-              >
-                <section
-                  id={`panel-${activePanel.id}`}
-                  role="tabpanel"
-                  aria-labelledby={`dock-tab-${activePanel.id}`}
-                  className="h-full border-t border-border/90 bg-muted/70 shadow-[0_-18px_36px_-24px_hsl(var(--foreground)/0.45)] backdrop-blur-lg supports-[backdrop-filter]:bg-muted/65"
-                  data-testid="bottom-panel"
+                <ResizablePanel
+                  id="workspace-panel"
+                  defaultSize={`${workspacePanelSize}%`}
+                  minSize="30%"
                 >
-                  {renderInspectorPanelContent()}
-                </section>
-              </ResizablePanel>
-            </ResizablePanelGroup>
+                  {renderWorkspace(false)}
+                </ResizablePanel>
+                <ResizableHandle
+                  withHandle
+                  className="bottom-panel-resize-handle bg-transparent"
+                  data-testid="bottom-panel-resize-handle"
+                />
+                <ResizablePanel
+                  id="inspector-panel"
+                  defaultSize={`${clampedDesktopPanelSize}%`}
+                  minSize="24%"
+                  maxSize="70%"
+                >
+                  <section
+                    id={`panel-${activePanel.id}`}
+                    role="tabpanel"
+                    aria-labelledby={`dock-tab-${activePanel.id}`}
+                    className="h-full border-t border-border/90 bg-muted/70 shadow-[0_-18px_36px_-24px_hsl(var(--foreground)/0.45)] backdrop-blur-lg supports-[backdrop-filter]:bg-muted/65"
+                    data-testid="bottom-panel"
+                  >
+                    {renderInspectorPanelContent()}
+                  </section>
+                </ResizablePanel>
+              </ResizablePanelGroup>
+            ) : (
+              <div className="h-full">{renderWorkspace(false)}</div>
+            )
           ) : (
-            <div className="h-full">{renderWorkspace(false)}</div>
-          )
-        ) : (
-          <div className="h-full">{renderWorkspace(true)}</div>
-        )}
-      </div>
+            <div className="h-full">{renderWorkspace(true)}</div>
+          )}
+        </div>
+      </SidebarInset>
 
       <AnimatePresence>
         {!isDesktop && panelOpen ? (
@@ -895,6 +896,6 @@ export default function App() {
           })}
         </div>
       </footer>
-    </div>
+    </SidebarProvider>
   )
 }

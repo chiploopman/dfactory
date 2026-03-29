@@ -29,17 +29,27 @@ test("dev mode: catalog, payload edit, html/pdf preview, generate, dock panel be
   await page.goto("/");
 
   await expect(page.getByTestId("dfactory-app")).toBeVisible();
+  const templateSearchInput = page.getByRole("textbox", {
+    name: "Search templates",
+  });
+  await expect(templateSearchInput).toBeVisible();
+  await expect(page.locator("[data-template-id='invoice']")).toBeVisible();
+  const invoiceItem = page.locator("[data-template-id='invoice']");
+  await expect(invoiceItem.getByTestId("template-item-name")).toContainText("Invoice");
+  await expect(invoiceItem.getByTestId("template-item-id")).toHaveText("invoice");
+
+  await templateSearchInput.fill("invoice-reference");
+  await expect(page.locator("[data-template-id='invoice-reference']")).toBeVisible();
+  await expect(page.locator("[data-template-id='invoice']")).toHaveCount(0);
+
+  await templateSearchInput.fill("starter");
+  await expect(page.getByText("No templates found for this search.")).toBeVisible();
+  await expect(page.locator("[data-template-id='invoice']")).toHaveCount(0);
+  await expect(page.locator("[data-template-id='invoice-reference']")).toHaveCount(0);
+
+  await templateSearchInput.fill("invoice");
   await expect(page.locator("[data-template-id='invoice']")).toBeVisible();
   await page.locator("[data-template-id='invoice']").click();
-  const frameworkBadge = page
-    .locator("[data-template-id='invoice'] [data-testid='template-framework-badge']")
-    .first();
-  await expect(frameworkBadge).toBeVisible();
-  if (testInfo.project.name.startsWith("vue-")) {
-    await expect(frameworkBadge).toHaveAttribute("data-icon-kind", "vue");
-  } else {
-    await expect(frameworkBadge).toHaveAttribute("data-icon-kind", "react");
-  }
   await expect(page.getByTestId("topbar-preview-button")).toBeEnabled();
   await expect(page.getByTestId("bottom-dock")).toBeVisible();
   await expect(page.getByTestId("bottom-panel")).toBeVisible();
