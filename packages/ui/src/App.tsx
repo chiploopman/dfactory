@@ -7,7 +7,8 @@ import {
   Eye,
   FileJson2,
   FileText,
-  Minimize2,
+  Maximize,
+  Minimize,
   TerminalSquare,
 } from "lucide-react"
 
@@ -590,7 +591,7 @@ export default function App() {
   function renderInspectorPanelContent() {
     return (
       <div className="flex h-full flex-col">
-        <div className="flex items-start gap-3 px-4 py-3">
+        <div className="flex items-center justify-between gap-3 px-4 py-3">
           <div className="flex flex-col gap-1">
             <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
               Inspector
@@ -600,6 +601,18 @@ export default function App() {
               {activePanel.label}
             </div>
           </div>
+
+          <Button
+            type="button"
+            variant="outline"
+            size="icon-sm"
+            className="self-center"
+            onClick={() => setPanelOpen(false)}
+            aria-label="Collapse bottom panel"
+            data-testid="bottom-panel-collapse"
+          >
+            <Minimize />
+          </Button>
         </div>
         <Separator />
         {renderInspectorBody()}
@@ -615,8 +628,8 @@ export default function App() {
       : "bottom-4"
 
     return (
-      <main className="relative min-h-0 flex-1 p-4">
-        <div className="h-full min-h-0">
+      <main className="relative h-full min-h-0 p-4">
+        <div className="size-full min-h-0">
           {mode === "html" ? (
             previewHtml ? (
               <iframe
@@ -820,19 +833,19 @@ export default function App() {
               })}
             </div>
 
-            {panelOpen ? (
+            {panelOpen ? null : (
               <Button
                 type="button"
                 variant="outline"
                 size="icon-sm"
                 className="self-center"
-                onClick={() => setPanelOpen(false)}
-                aria-label="Collapse bottom panel"
+                onClick={() => setPanelOpen(true)}
+                aria-label="Expand bottom panel"
                 data-testid="bottom-panel-collapse"
               >
-                <Minimize2 />
+                <Maximize />
               </Button>
-            ) : null}
+            )}
           </div>
         </footer>
       </SidebarInset>

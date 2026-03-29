@@ -266,10 +266,25 @@ test("dev mode: catalog, payload edit, html/pdf preview, generate, dock panel be
 
   await page.getByTestId("dock-tab-schema").click();
   await expect(page.getByTestId("bottom-panel")).toBeVisible();
-  await expect(page.getByTestId("bottom-panel-collapse")).toBeVisible();
-  await page.getByTestId("bottom-panel-collapse").click();
+  await expect(
+    page.getByTestId("bottom-panel").getByTestId("bottom-panel-collapse"),
+  ).toBeVisible();
+  await expect(
+    page.getByTestId("bottom-dock").getByTestId("bottom-panel-collapse"),
+  ).toHaveCount(0);
+  await page.getByTestId("bottom-panel").getByTestId("bottom-panel-collapse").click();
   await expect(page.getByTestId("bottom-panel")).toHaveCount(0);
-  await expect(page.getByTestId("bottom-panel-collapse")).toHaveCount(0);
+  await expect(
+    page.getByTestId("bottom-dock").getByTestId("bottom-panel-collapse"),
+  ).toBeVisible();
+  await page.getByTestId("bottom-dock").getByTestId("bottom-panel-collapse").click();
+  await expect(page.getByTestId("bottom-panel")).toBeVisible();
+  await expect(
+    page.getByTestId("bottom-panel").getByTestId("bottom-panel-collapse"),
+  ).toBeVisible();
+  await expect(
+    page.getByTestId("bottom-dock").getByTestId("bottom-panel-collapse"),
+  ).toHaveCount(0);
 
   await page.getByTestId("dock-tab-source").click();
   await expect(page.getByTestId("bottom-panel")).toBeVisible();

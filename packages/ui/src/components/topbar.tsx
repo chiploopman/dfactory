@@ -30,7 +30,7 @@ export function Topbar({
 }: TopbarProps) {
   return (
     <header className="flex h-14 items-center justify-between gap-3 border-b bg-card/60 px-4 py-0 backdrop-blur-sm">
-      <div className="min-w-0 flex-1">
+      <div className="min-w-0 flex-1 self-center">
         <p className="truncate text-sm font-semibold">
           {selectedTemplate?.meta.title ?? "Select a template"}
         </p>
@@ -39,14 +39,14 @@ export function Topbar({
         </p>
       </div>
 
-      <div className="flex shrink-0 items-center gap-2">
+      <div className="flex h-full shrink-0 items-center self-center gap-2">
         <Tabs
           value={mode}
           onValueChange={(nextValue) => onModeChange(nextValue as RenderMode)}
-          className="gap-0"
+          className="h-full items-center gap-0 data-horizontal:!flex-row"
           data-testid="preview-mode-tabs"
         >
-          <TabsList>
+          <TabsList className="self-center">
             <TabsTrigger value="html" data-testid="preview-mode-html">
               HTML
             </TabsTrigger>
@@ -56,7 +56,10 @@ export function Topbar({
           </TabsList>
         </Tabs>
 
-        <Separator orientation="vertical" className="h-6" />
+        <Separator
+          orientation="vertical"
+          className="data-vertical:!h-6 data-vertical:!self-center"
+        />
 
         <Button
           size="default"
