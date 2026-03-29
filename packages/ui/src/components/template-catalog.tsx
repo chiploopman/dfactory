@@ -29,35 +29,38 @@ export function TemplateCatalog({
   onSelect,
 }: TemplateCatalogProps) {
   const normalized = query.trim().toLowerCase()
-  const filtered = templates.filter((item) => {
-    const haystack = `${item.meta.title} ${item.id}`.toLowerCase()
-
-    return haystack.includes(normalized)
-  })
+  const filtered = templates.filter((item) =>
+    item.id.toLowerCase().includes(normalized),
+  )
 
   return (
     <Sidebar collapsible="none" className="h-full border-r">
-      <SidebarHeader className="h-14 flex-row items-center gap-3 border-b px-3 py-0">
+      <SidebarHeader className="h-14 justify-center border-b px-3 py-0">
         <span
-          className="shrink-0 text-sm font-semibold tracking-tight text-primary"
+          className="shrink-0 text-lg font-semibold tracking-tight text-primary"
           data-testid="catalog-logo"
         >
-          dFactory
+          dfactory
         </span>
-        <div className="relative min-w-0 flex-1">
-          <Search className="pointer-events-none absolute top-1/2 left-2 size-4 -translate-y-1/2 text-muted-foreground" />
-          <SidebarInput
-            placeholder="Search templates"
-            value={query}
-            onChange={(event) => onQueryChange(event.target.value)}
-            className="pl-8"
-            aria-label="Search templates"
-          />
-        </div>
       </SidebarHeader>
 
       <SidebarContent>
-        <SidebarGroup className="min-h-0 flex-1 p-2">
+        <SidebarGroup className="p-2 pb-1">
+          <SidebarGroupContent>
+            <div className="relative min-w-0">
+              <Search className="pointer-events-none absolute top-1/2 left-2 size-4 -translate-y-1/2 text-muted-foreground" />
+              <SidebarInput
+                placeholder="Search templates"
+                value={query}
+                onChange={(event) => onQueryChange(event.target.value)}
+                className="pl-8"
+                aria-label="Search templates"
+              />
+            </div>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        <SidebarGroup className="min-h-0 flex-1 p-2 pt-1">
           <SidebarGroupContent>
             <SidebarMenu className="gap-1">
               {filtered.map((template) => (
@@ -67,22 +70,14 @@ export function TemplateCatalog({
                     isActive={selectedId === template.id}
                     variant="primary"
                     onClick={() => onSelect(template.id)}
-                    className="h-auto items-start py-2.5"
+                    className="h-auto items-start py-2.5 font-normal data-active:font-normal"
                     data-template-id={template.id}
                   >
-                    <span className="flex min-w-0 flex-col">
-                      <span
-                        className="truncate text-sm font-medium"
-                        data-testid="template-item-name"
-                      >
-                        {template.meta.title}
-                      </span>
-                      <span
-                        className="truncate text-xs text-muted-foreground group-data-active/menu-button:text-primary"
-                        data-testid="template-item-id"
-                      >
-                        {template.id}
-                      </span>
+                    <span
+                      className="truncate text-sm font-normal text-muted-foreground group-data-active/menu-button:text-primary"
+                      data-testid="template-item-id"
+                    >
+                      {template.id}
                     </span>
                   </SidebarMenuButton>
                 </SidebarMenuItem>

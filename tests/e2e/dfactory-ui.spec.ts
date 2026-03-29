@@ -35,7 +35,6 @@ test("dev mode: catalog, payload edit, html/pdf preview, generate, dock panel be
   await expect(templateSearchInput).toBeVisible();
   await expect(page.locator("[data-template-id='invoice']")).toBeVisible();
   const invoiceItem = page.locator("[data-template-id='invoice']");
-  await expect(invoiceItem.getByTestId("template-item-name")).toContainText("Invoice");
   await expect(invoiceItem.getByTestId("template-item-id")).toHaveText("invoice");
   await expect(
     page.locator("header").getByTestId("preview-mode-tabs"),
@@ -79,12 +78,23 @@ test("dev mode: catalog, payload edit, html/pdf preview, generate, dock panel be
     return getComputedStyle(element).color;
   });
   expect(logoColor).toBe(catalogColorTokens.primaryForeground);
+  const logoFontSize = await catalogLogo.evaluate((element) => {
+    return getComputedStyle(element).fontSize;
+  });
+  expect(Number.parseFloat(logoFontSize)).toBeGreaterThanOrEqual(17);
+  const sidebarHeader = page.locator("[data-slot='sidebar-header']");
+  const sidebarHeaderBox = await sidebarHeader.boundingBox();
+  const searchInputBox = await templateSearchInput.boundingBox();
+  expect(sidebarHeaderBox).not.toBeNull();
+  expect(searchInputBox).not.toBeNull();
+  expect((searchInputBox?.y ?? 0) >= (sidebarHeaderBox?.y ?? 0) + (sidebarHeaderBox?.height ?? 0) - 1)
+    .toBe(true);
 
   await templateSearchInput.fill("invoice-reference");
   await expect(page.locator("[data-template-id='invoice-reference']")).toBeVisible();
   await expect(page.locator("[data-template-id='invoice']")).toHaveCount(0);
 
-  await templateSearchInput.fill("starter");
+  await templateSearchInput.fill("advanced");
   await expect(page.getByText("No templates found for this search.")).toBeVisible();
   await expect(page.locator("[data-template-id='invoice']")).toHaveCount(0);
   await expect(page.locator("[data-template-id='invoice-reference']")).toHaveCount(0);
@@ -98,18 +108,18 @@ test("dev mode: catalog, payload edit, html/pdf preview, generate, dock panel be
   });
   expect(invoiceItemBackground).not.toBe(catalogColorTokens.legacySidebarPrimaryBackground);
   expect(invoiceItemBackground).not.toBe("rgba(0, 0, 0, 0)");
-  const selectedTemplateNameColor = await invoiceItem
-    .getByTestId("template-item-name")
-    .evaluate((element) => {
-      return getComputedStyle(element).color;
-    });
-  expect(selectedTemplateNameColor).toBe(catalogColorTokens.primaryForeground);
   const selectedTemplateIdColor = await invoiceItem
     .getByTestId("template-item-id")
     .evaluate((element) => {
       return getComputedStyle(element).color;
     });
   expect(selectedTemplateIdColor).toBe(catalogColorTokens.primaryForeground);
+  const selectedTemplateIdWeight = await invoiceItem
+    .getByTestId("template-item-id")
+    .evaluate((element) => {
+      return getComputedStyle(element).fontWeight;
+    });
+  expect(selectedTemplateIdWeight).toBe("400");
   const invoiceReferenceItem = page.locator("[data-template-id='invoice-reference']");
   await expect(invoiceReferenceItem).toBeVisible();
   await expect(invoiceReferenceItem).toHaveAttribute("data-active", "false");
@@ -123,6 +133,12 @@ test("dev mode: catalog, payload edit, html/pdf preview, generate, dock panel be
       return getComputedStyle(element).color;
     });
   expect(unselectedTemplateIdColor).not.toBe(catalogColorTokens.primaryForeground);
+  const unselectedTemplateIdWeight = await invoiceReferenceItem
+    .getByTestId("template-item-id")
+    .evaluate((element) => {
+      return getComputedStyle(element).fontWeight;
+    });
+  expect(unselectedTemplateIdWeight).toBe("400");
   await expect(page.getByTestId("topbar-preview-button")).toBeEnabled();
   await expect(page.getByTestId("bottom-dock")).toBeVisible();
   await expect(page.getByTestId("bottom-panel")).toBeVisible();
