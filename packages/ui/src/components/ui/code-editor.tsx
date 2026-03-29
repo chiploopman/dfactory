@@ -4,8 +4,9 @@ import { javascript } from "@codemirror/lang-javascript"
 import { json } from "@codemirror/lang-json"
 import { markdown } from "@codemirror/lang-markdown"
 import { EditorView } from "@codemirror/view"
-import { githubLight } from "@uiw/codemirror-theme-github"
+import { githubDark, githubLight } from "@uiw/codemirror-theme-github"
 import CodeMirror from "@uiw/react-codemirror"
+import { useTheme } from "next-themes"
 
 import type { InspectorEditorConfig } from "@/lib/editor-config"
 import { cn } from "@/lib/utils"
@@ -58,7 +59,9 @@ export function CodeEditor({
   variant = "framed",
   "data-testid": dataTestId,
 }: CodeEditorProps) {
+  const { resolvedTheme } = useTheme()
   const extensions = createLanguageExtensions(config)
+  const editorTheme = resolvedTheme === "dark" ? githubDark : githubLight
 
   return (
     <div
@@ -72,7 +75,7 @@ export function CodeEditor({
     >
       <CodeMirror
         value={value}
-        theme={githubLight}
+        theme={editorTheme}
         height="100%"
         editable={!config.readOnly}
         readOnly={config.readOnly}
@@ -87,7 +90,7 @@ export function CodeEditor({
           foldGutter: true,
           autocompletion: !config.readOnly,
         }}
-        className="h-full [&_.cm-editor]:h-full [&_.cm-gutters]:bg-transparent [&_.cm-scroller]:font-mono"
+        className="h-full [&_.cm-editor]:h-full [&_.cm-scroller]:font-mono dark:[&_.cm-editor]:!bg-transparent dark:[&_.cm-scroller]:!bg-transparent dark:[&_.cm-gutters]:border-r-border/40 dark:[&_.cm-gutters]:!bg-transparent dark:[&_.cm-activeLine]:!bg-accent/35 dark:[&_.cm-activeLineGutter]:!bg-accent/45"
       />
     </div>
   )

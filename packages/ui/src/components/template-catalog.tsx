@@ -37,7 +37,7 @@ export function TemplateCatalog({
     <Sidebar collapsible="none" className="h-full border-r">
       <SidebarHeader className="h-14 justify-center border-b px-3 py-0">
         <span
-          className="shrink-0 text-lg font-semibold tracking-tight text-primary"
+          className="shrink-0 text-lg font-semibold tracking-tight text-primary dark:text-primary"
           data-testid="catalog-logo"
         >
           dfactory

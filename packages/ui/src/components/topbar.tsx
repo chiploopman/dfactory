@@ -1,5 +1,6 @@
 import { Download, Eye } from "lucide-react"
 
+import { ModeToggle } from "@/components/mode-toggle"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { Spinner } from "@/components/ui/spinner"
@@ -88,6 +89,16 @@ export function Topbar({
           )}
           {generateBusy ? "Generating..." : "Generate"}
         </Button>
+
+        <Separator
+          orientation="vertical"
+          className="data-vertical:!h-6 data-vertical:!self-center"
+          data-testid="topbar-theme-separator"
+        />
+
+        <div className="flex items-center" data-testid="topbar-theme-toggle">
+          <ModeToggle />
+        </div>
       </div>
     </header>
   )

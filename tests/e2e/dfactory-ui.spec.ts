@@ -39,9 +39,79 @@ test("dev mode: catalog, payload edit, html/pdf preview, generate, dock panel be
   await expect(
     page.locator("header").getByTestId("preview-mode-tabs"),
   ).toBeVisible();
+  const themeToggleTrigger = page.getByTestId("theme-toggle-trigger");
+  await expect(themeToggleTrigger).toBeVisible();
+  const themeToggleContainer = page.getByTestId("topbar-theme-toggle");
+  await expect(themeToggleContainer).toBeVisible();
+  const themeSeparator = page.getByTestId("topbar-theme-separator");
+  await expect(themeSeparator).toBeVisible();
+
+  const topbarBox = await page.locator("header").boundingBox();
+  const themeToggleBox = await themeToggleTrigger.boundingBox();
+  expect(topbarBox).toBeTruthy();
+  expect(themeToggleBox).toBeTruthy();
+  expect((themeToggleBox?.x ?? 0) + (themeToggleBox?.width ?? 0)).toBeGreaterThan(
+    (topbarBox?.x ?? 0) + (topbarBox?.width ?? 0) - 48,
+  );
+
+  const generateButtonBox = await page.getByTestId("topbar-generate-button").boundingBox();
+  const themeSeparatorBox = await themeSeparator.boundingBox();
+  expect(generateButtonBox).toBeTruthy();
+  expect(themeSeparatorBox).toBeTruthy();
+  expect((themeSeparatorBox?.x ?? 0)).toBeGreaterThan((generateButtonBox?.x ?? 0));
+  expect((themeToggleBox?.x ?? 0)).toBeGreaterThan((themeSeparatorBox?.x ?? 0));
+
+  const openThemeMenu = async () => {
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      if (await page.getByTestId("theme-toggle-menu").isVisible()) {
+        return;
+      }
+      await themeToggleTrigger.click({ force: true });
+      await page.waitForTimeout(60);
+    }
+    await expect(page.getByTestId("theme-toggle-menu")).toBeVisible();
+  };
+
+  await openThemeMenu();
+  await expect(page.getByTestId("theme-toggle-menu")).toBeVisible();
+  await expect(page.getByTestId("theme-toggle-light")).toBeVisible();
+  await expect(page.getByTestId("theme-toggle-dark")).toBeVisible();
+  await expect(page.getByTestId("theme-toggle-system")).toBeVisible();
+
+  await page.getByTestId("theme-toggle-light").click({ force: true });
+  await expect.poll(async () => {
+    return page.evaluate(() => document.documentElement.classList.contains("dark"));
+  }).toBe(false);
+  const lightBackground = await page.evaluate(() => {
+    return getComputedStyle(document.body).backgroundColor;
+  });
+
+  await openThemeMenu();
+  await page.getByTestId("theme-toggle-dark").click({ force: true });
+  await expect.poll(async () => {
+    return page.evaluate(() => document.documentElement.classList.contains("dark"));
+  }).toBe(true);
+  const darkBackground = await page.evaluate(() => {
+    return getComputedStyle(document.body).backgroundColor;
+  });
+  expect(darkBackground).not.toBe(lightBackground);
+  const darkLogoColor = await page.getByTestId("catalog-logo").evaluate((element) => {
+    return getComputedStyle(element).color;
+  });
+  const darkPrimaryButtonBg = await page.getByTestId("topbar-preview-button").evaluate((element) => {
+    return getComputedStyle(element).backgroundColor;
+  });
+  expect(darkLogoColor).toBe(darkPrimaryButtonBg);
+
+  await openThemeMenu();
+  await page.getByTestId("theme-toggle-light").click({ force: true });
+  await expect.poll(async () => {
+    return page.evaluate(() => document.documentElement.classList.contains("dark"));
+  }).toBe(false);
+
   const catalogLogo = page.getByTestId("catalog-logo");
   await expect(catalogLogo).toBeVisible();
-  await expect(catalogLogo).toHaveText("dFactory");
+  await expect(catalogLogo).toHaveText("dfactory");
   const headerHeights = await page.evaluate(() => {
     const sidebarHeader = document.querySelector("[data-slot='sidebar-header']");
     const topbar = document.querySelector("header");
@@ -154,6 +224,32 @@ test("dev mode: catalog, payload edit, html/pdf preview, generate, dock panel be
   expect(emptyPreviewClass).toContain("size-full");
   await expect(page.getByTestId("payload-editor")).toBeVisible();
   await expect(page.getByTestId("payload-editor").locator(".cm-editor")).toBeVisible();
+  await openThemeMenu();
+  await page.getByTestId("theme-toggle-dark").click({ force: true });
+  await expect.poll(async () => {
+    return page.evaluate(() => document.documentElement.classList.contains("dark"));
+  }).toBe(true);
+  const darkEditorSurfaces = await page.getByTestId("payload-editor").evaluate((element) => {
+    const cmEditor = element.querySelector(".cm-editor");
+    const cmGutters = element.querySelector(".cm-gutters");
+    const cmActiveLine = element.querySelector(".cm-activeLine");
+    const result = {
+      wrapperBackground: getComputedStyle(element).backgroundColor,
+      editorBackground: cmEditor ? getComputedStyle(cmEditor).backgroundColor : "",
+      guttersBackground: cmGutters ? getComputedStyle(cmGutters).backgroundColor : "",
+      activeLineBackground: cmActiveLine ? getComputedStyle(cmActiveLine).backgroundColor : "",
+    };
+    return result;
+  });
+  expect(darkEditorSurfaces.wrapperBackground).not.toBe("rgba(0, 0, 0, 0)");
+  expect(darkEditorSurfaces.editorBackground).toBe("rgba(0, 0, 0, 0)");
+  expect(darkEditorSurfaces.guttersBackground).toBe("rgba(0, 0, 0, 0)");
+  expect(darkEditorSurfaces.activeLineBackground).not.toBe("rgba(0, 0, 0, 0)");
+  await openThemeMenu();
+  await page.getByTestId("theme-toggle-light").click({ force: true });
+  await expect.poll(async () => {
+    return page.evaluate(() => document.documentElement.classList.contains("dark"));
+  }).toBe(false);
 
   await setCodeMirrorValue(
     page,
