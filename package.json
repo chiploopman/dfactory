@@ -6,7 +6,7 @@
   "packageManager": "pnpm@10.0.0",
   "scripts": {
     "build": "turbo run build",
-    "dev": "pnpm build && node packages/cli/dist/index.js dev --config dfactory.config.vue.ts",
+    "dev": "pnpm build && node packages/cli/dist/index.js dev --config dfactory.config.ts",
     "serve": "pnpm build && node packages/cli/dist/index.js serve --config dfactory.config.ts",
     "index": "pnpm build && node packages/cli/dist/index.js index --config dfactory.config.ts",
     "doctor": "pnpm build && node packages/cli/dist/index.js doctor --config dfactory.config.ts",

@@ -78,7 +78,7 @@ export function TemplateCatalog({
                         {template.meta.title}
                       </span>
                       <span
-                        className="truncate text-xs text-muted-foreground group-data-active/menu-button:text-sidebar-primary-foreground"
+                        className="truncate text-xs text-muted-foreground group-data-active/menu-button:text-primary"
                         data-testid="template-item-id"
                       >
                         {template.id}

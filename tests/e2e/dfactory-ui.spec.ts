@@ -59,21 +59,19 @@ test("dev mode: catalog, payload edit, html/pdf preview, generate, dock panel be
     Math.abs((headerHeights?.sidebarHeight ?? 0) - (headerHeights?.topbarHeight ?? 0)),
   ).toBeLessThanOrEqual(1);
   const catalogColorTokens = await page.evaluate(() => {
-    const sidebarProbe = document.createElement("div");
-    sidebarProbe.style.backgroundColor = "var(--sidebar-primary)";
-    sidebarProbe.style.color = "var(--sidebar-primary-foreground)";
+    const legacySidebarProbe = document.createElement("div");
+    legacySidebarProbe.style.backgroundColor = "var(--sidebar-primary)";
     const primaryProbe = document.createElement("div");
     primaryProbe.style.color = "var(--primary)";
-    document.body.appendChild(sidebarProbe);
+    document.body.appendChild(legacySidebarProbe);
     document.body.appendChild(primaryProbe);
-    const sidebarStyles = getComputedStyle(sidebarProbe);
+    const legacySidebarStyles = getComputedStyle(legacySidebarProbe);
     const primaryStyles = getComputedStyle(primaryProbe);
     const colors = {
-      sidebarPrimaryBackground: sidebarStyles.backgroundColor,
-      sidebarPrimaryForeground: sidebarStyles.color,
       primaryForeground: primaryStyles.color,
+      legacySidebarPrimaryBackground: legacySidebarStyles.backgroundColor,
     };
-    sidebarProbe.remove();
+    legacySidebarProbe.remove();
     primaryProbe.remove();
     return colors;
   });
@@ -98,26 +96,33 @@ test("dev mode: catalog, payload edit, html/pdf preview, generate, dock panel be
   const invoiceItemBackground = await invoiceItem.evaluate((element) => {
     return getComputedStyle(element).backgroundColor;
   });
-  expect(invoiceItemBackground).toBe(catalogColorTokens.sidebarPrimaryBackground);
+  expect(invoiceItemBackground).not.toBe(catalogColorTokens.legacySidebarPrimaryBackground);
+  expect(invoiceItemBackground).not.toBe("rgba(0, 0, 0, 0)");
+  const selectedTemplateNameColor = await invoiceItem
+    .getByTestId("template-item-name")
+    .evaluate((element) => {
+      return getComputedStyle(element).color;
+    });
+  expect(selectedTemplateNameColor).toBe(catalogColorTokens.primaryForeground);
   const selectedTemplateIdColor = await invoiceItem
     .getByTestId("template-item-id")
     .evaluate((element) => {
       return getComputedStyle(element).color;
     });
-  expect(selectedTemplateIdColor).toBe(catalogColorTokens.sidebarPrimaryForeground);
+  expect(selectedTemplateIdColor).toBe(catalogColorTokens.primaryForeground);
   const invoiceReferenceItem = page.locator("[data-template-id='invoice-reference']");
   await expect(invoiceReferenceItem).toBeVisible();
   await expect(invoiceReferenceItem).toHaveAttribute("data-active", "false");
   const invoiceReferenceBackground = await invoiceReferenceItem.evaluate((element) => {
     return getComputedStyle(element).backgroundColor;
   });
-  expect(invoiceReferenceBackground).not.toBe(catalogColorTokens.sidebarPrimaryBackground);
+  expect(invoiceReferenceBackground).not.toBe(catalogColorTokens.legacySidebarPrimaryBackground);
   const unselectedTemplateIdColor = await invoiceReferenceItem
     .getByTestId("template-item-id")
     .evaluate((element) => {
       return getComputedStyle(element).color;
     });
-  expect(unselectedTemplateIdColor).not.toBe(catalogColorTokens.sidebarPrimaryForeground);
+  expect(unselectedTemplateIdColor).not.toBe(catalogColorTokens.primaryForeground);
   await expect(page.getByTestId("topbar-preview-button")).toBeEnabled();
   await expect(page.getByTestId("bottom-dock")).toBeVisible();
   await expect(page.getByTestId("bottom-panel")).toBeVisible();
@@ -253,6 +258,25 @@ test("dev mode: catalog, payload edit, html/pdf preview, generate, dock panel be
   expect(referenceFeaturesBody.elementCapabilities.toc.hasRender).toBe(true);
   expect(referenceFeaturesBody.elementCapabilities.header.hasRender).toBe(true);
   expect(referenceFeaturesBody.elementCapabilities.pagination.hasRender).toBe(true);
+
+  const [referencePreviewResponse] = await Promise.all([
+    page.waitForResponse((response) => {
+      return response.url().includes("/api/document/preview") && response.request().method() === "POST";
+    }),
+    page.getByTestId("topbar-preview-button").click()
+  ]);
+
+  expect(referencePreviewResponse.ok()).toBeTruthy();
+
+  const [referenceGenerateResponse] = await Promise.all([
+    page.waitForResponse((response) => {
+      return response.url().includes("/api/document/generate") && response.request().method() === "POST";
+    }),
+    page.getByTestId("topbar-generate-button").click()
+  ]);
+
+  expect(referenceGenerateResponse.ok()).toBeTruthy();
+  await expect(page.getByTestId("error-banner")).toHaveCount(0);
 
   await expect(page.getByTestId("bottom-dock")).toBeVisible();
   await expect(page.getByTestId("bottom-dock")).toHaveAttribute("data-sticky", "true");
