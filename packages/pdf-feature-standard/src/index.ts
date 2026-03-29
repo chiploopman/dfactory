@@ -113,6 +113,16 @@ function appendHeadHtml(html: string, fragment: string): string {
   return $.html();
 }
 
+function findPagedMarkerClassInDom(html: string): string | undefined {
+  const $ = loadHtml(html);
+  for (const className of PAGED_MEDIA_ONLY_CLASS_NAMES) {
+    if ($(`.${className}`).length > 0) {
+      return className;
+    }
+  }
+  return undefined;
+}
+
 async function applyToc(context: PdfFeatureHtmlContext): Promise<void> {
   const tocEnabled = context.resolvedFeatures.toc?.enabled ?? false;
   const depth = context.resolvedFeatures.toc?.maxDepth ?? 3;
@@ -510,9 +520,7 @@ export const pdfFeaturePlugin: PdfFeaturePlugin = {
       });
     }
 
-    const pagedClassUsedWithoutPagedMode = PAGED_MEDIA_ONLY_CLASS_NAMES.find((className) => {
-      return context.html.includes(className);
-    });
+    const pagedClassUsedWithoutPagedMode = findPagedMarkerClassInDom(context.html);
     if (
       pagedClassUsedWithoutPagedMode &&
       context.resolvedFeatures.pagination?.mode !== "pagedjs"

@@ -114,6 +114,26 @@ export function render(payload: { customerName: string }) {
     expect(response.statusCode).toBe(200);
     const body = response.json() as { html: string };
     expect(body.html).toContain("Hello Alice");
+    expect(body.html).toContain("font-family: var(--df-pdf-font-family)");
+    expect(body.html).toContain("--df-pdf-font-family:");
+  });
+
+  it("generates transformed html output for vue template", async () => {
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/document/generate",
+      payload: {
+        templateId: "invoice",
+        payload: { customerName: "Alice" },
+        mode: "html"
+      }
+    });
+
+    expect(response.statusCode).toBe(200);
+    const body = response.json() as { html: string };
+    expect(body.html).toContain("Hello Alice");
+    expect(body.html).toContain("font-family: var(--df-pdf-font-family)");
+    expect(body.html).toContain("--df-pdf-font-family:");
   });
 
   it("returns source manifest for vue template folder", async () => {
@@ -175,7 +195,22 @@ export function render(payload: { customerName: string }) {
     });
 
     expect(response.statusCode).toBe(200);
-    const body = response.json() as { ok: boolean };
+    const body = response.json() as {
+      ok: boolean;
+      diagnostics: {
+        features: Array<{
+          level?: "info" | "warn" | "error";
+        }>;
+      };
+    };
     expect(body.ok).toBe(true);
+    expect(
+      body.diagnostics.features.filter((diagnostic) => diagnostic.level === "warn")
+        .length
+    ).toBe(0);
+    expect(
+      body.diagnostics.features.filter((diagnostic) => diagnostic.level === "error")
+        .length
+    ).toBe(0);
   });
 });

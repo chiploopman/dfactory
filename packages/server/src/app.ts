@@ -365,7 +365,7 @@ export async function createDFactoryServer(options: DFactoryServerOptions) {
         return {
           mode: "html",
           templateId: parsed.data.templateId,
-          html: rendered.html,
+          html: preflight.html,
           diagnostics: rendered.diagnostics,
           featureDiagnostics: preflight.diagnostics,
           resolvedFeatures: preflight.resolvedFeatures,
@@ -423,12 +423,24 @@ export async function createDFactoryServer(options: DFactoryServerOptions) {
       });
 
       if (parsed.data.mode === "html") {
+        const preflight = await renderer.preflight(rendered.html, {
+          templateId: parsed.data.templateId,
+          templateMeta: registry.getTemplate(parsed.data.templateId).meta,
+          mode: parsed.data.mode,
+          profile: parsed.data.options?.profile,
+          payload: parsed.data.payload,
+          templateFeatures: rendered.templatePdfConfig,
+          features: parsed.data.options?.features as TemplatePdfFeatureOverrides | undefined,
+          templatePdfElements: rendered.templatePdfElements,
+          templatePdfElementCapabilities: rendered.templatePdfElementCapabilities
+        });
         return {
           mode: "html",
           templateId: parsed.data.templateId,
-          html: rendered.html,
+          html: preflight.html,
           diagnostics: rendered.diagnostics,
-          resolvedFeatures: rendered.templatePdfConfig,
+          featureDiagnostics: preflight.diagnostics,
+          resolvedFeatures: preflight.resolvedFeatures,
           generatedAt: new Date().toISOString()
         };
       }

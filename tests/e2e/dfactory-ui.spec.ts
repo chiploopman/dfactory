@@ -176,6 +176,11 @@ test("dev mode: catalog, payload edit, html/pdf preview, generate, dock panel be
   expect(preflightResponse.ok()).toBeTruthy();
   const preflightBody = (await preflightResponse.json()) as {
     ok: boolean;
+    diagnostics: {
+      features: Array<{
+        level?: "info" | "warn" | "error";
+      }>;
+    };
     resolvedFeatures: {
       toc?: {
         enabled?: boolean;
@@ -184,6 +189,12 @@ test("dev mode: catalog, payload edit, html/pdf preview, generate, dock panel be
   };
   expect(preflightBody.ok).toBe(true);
   expect(preflightBody.resolvedFeatures.toc?.enabled).toBe(true);
+  expect(
+    preflightBody.diagnostics.features.filter((diagnostic) => diagnostic.level === "warn"),
+  ).toHaveLength(0);
+  expect(
+    preflightBody.diagnostics.features.filter((diagnostic) => diagnostic.level === "error"),
+  ).toHaveLength(0);
 
   const featuresResponse = await page.request.get(`${apiBase}/templates/invoice/features`);
   expect(featuresResponse.ok()).toBeTruthy();
@@ -212,6 +223,18 @@ test("dev mode: catalog, payload edit, html/pdf preview, generate, dock panel be
   expect(htmlPreviewBody.mode).toBe("html");
   expect(htmlPreviewRequest.payload.invoiceNumber).toBe("INV-2026");
   await expect(page.getByTestId("preview-frame")).toBeVisible();
+  const htmlPreviewFontFamily = await page.getByTestId("preview-frame").evaluate((element) => {
+    const iframe = element as HTMLIFrameElement;
+    const documentRef = iframe.contentDocument;
+    if (!documentRef?.body) {
+      return "";
+    }
+    return documentRef.defaultView?.getComputedStyle(documentRef.body).fontFamily ?? "";
+  });
+  expect(htmlPreviewFontFamily.toLowerCase()).toContain("inter");
+  await expect(
+    page.getByText(/Preflight reported \d+ feature warning\(s\)/i),
+  ).toHaveCount(0);
 
   await page.getByRole("tab", { name: "PDF" }).click();
   const [pdfPreviewResponse] = await Promise.all([
@@ -234,6 +257,9 @@ test("dev mode: catalog, payload edit, html/pdf preview, generate, dock panel be
 
   expect(generateResponse.ok()).toBeTruthy();
   expect(generateResponse.headers()["content-type"]).toContain("application/pdf");
+  await expect(
+    page.getByText(/Preflight reported \d+ feature warning\(s\)/i),
+  ).toHaveCount(0);
 
   await expect(page.locator("[data-template-id='invoice-reference']")).toBeVisible();
   await page.locator("[data-template-id='invoice-reference']").click();

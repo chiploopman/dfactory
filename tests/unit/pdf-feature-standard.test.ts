@@ -153,4 +153,23 @@ describe("pdf-feature-standard", () => {
     expect(Array.isArray(diagnostics)).toBe(true);
     expect(diagnostics.some((entry) => entry.code === "pagination.paged-only-marker")).toBe(true);
   });
+
+  it("does not warn for paged markers present only in injected stylesheet text", async () => {
+    const context = {
+      resolvedFeatures: {
+        pagination: {
+          mode: "css"
+        }
+      },
+      html: "<!doctype html><html><head></head><body><main>content</main></body></html>",
+      diagnostics: [],
+      options: {}
+    } as Parameters<NonNullable<typeof pdfFeaturePlugin.htmlPre>>[0];
+
+    await pdfFeaturePlugin.htmlPre?.(context);
+    const diagnostics = pdfFeaturePlugin.preflight?.(context) ?? [];
+
+    expect(Array.isArray(diagnostics)).toBe(true);
+    expect(diagnostics.some((entry) => entry.code === "pagination.paged-only-marker")).toBe(false);
+  });
 });
