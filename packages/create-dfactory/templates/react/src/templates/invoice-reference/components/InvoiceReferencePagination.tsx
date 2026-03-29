@@ -1,11 +1,11 @@
+import { AvoidBreakInside } from "@dfactory/pdf-primitives-react";
+
 export function InvoiceReferencePagination(props: {
   pageNumberToken: string;
   totalPagesToken: string;
-  markerClassPreview: string;
 }) {
   return (
-    <div
-      className={props.markerClassPreview}
+    <AvoidBreakInside
       style={{
         width: "100%",
         padding: "4px 16px 8px",
@@ -19,6 +19,6 @@ export function InvoiceReferencePagination(props: {
       <span>
         Page {props.pageNumberToken} of {props.totalPagesToken}
       </span>
-    </div>
+    </AvoidBreakInside>
   );
 }

@@ -1,5 +1,5 @@
 {
-  "name": "@dfactory/pdf-feature-pagedjs",
+  "name": "@dfactory/pdf-primitives-core",
   "version": "0.1.0",
   "type": "module",
   "main": "dist/index.js",
@@ -17,11 +17,6 @@
     "lint": "eslint src --ext .ts",
     "test": "vitest run --passWithNoTests",
     "clean": "rm -rf dist"
-  },
-  "dependencies": {
-    "@dfactory/pdf-primitives-core": "workspace:*",
-    "@dfactory/renderer-playwright": "workspace:*",
-    "pagedjs": "^0.4.3"
   },
   "devDependencies": {
     "tsup": "^8.3.5"

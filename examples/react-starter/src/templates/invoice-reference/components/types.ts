@@ -63,9 +63,3 @@ export interface InvoiceReferencePayload {
   watermark?: InvoiceReferenceWatermark;
   brand?: InvoiceReferenceBrand;
 }
-
-export interface InvoiceReferenceMarkerClasses {
-  keepWithNext: string;
-  avoidBreak: string;
-  pageBreakBefore: string;
-}

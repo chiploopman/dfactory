@@ -1,6 +1,22 @@
-import * as React from "react";
 import { z } from "zod";
 
+import {
+  AvoidBreakInside,
+  Document,
+  Heading,
+  KeepWithNext,
+  NumericCell,
+  Page,
+  PageBreakBefore,
+  Paragraph,
+  Section,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeaderCell,
+  TableRow
+} from "@dfactory/pdf-primitives-react";
 import { defineTemplate } from "@dfactory/template-kit";
 
 const template = defineTemplate({
@@ -40,11 +56,19 @@ const template = defineTemplate({
     headerFooter: {
       enabled: true,
       footerTemplate:
-        "<div style=\"width:100%;font-size:9px;padding:0 12px;color:#64748b;display:flex;justify-content:space-between;\"><span>{{title}}</span><span>{{pageNumber}} / {{totalPages}}</span></div>"
+        "<div style=\"width:100%;font-size:9px;padding:0 12px;color:#64748b;display:flex;justify-content:space-between;\"><span>{{title}}</span><span>{{pageXofY}}</span></div>"
     },
     metadata: {
       title: "Invoice Document",
       keywords: ["invoice", "billing", "starter"]
+    },
+    theme: {
+      font: {
+        family: "Inter, 'Segoe UI', sans-serif"
+      },
+      color: {
+        accent: "#1d4ed8"
+      }
     }
   },
   examples: [
@@ -61,52 +85,64 @@ const template = defineTemplate({
       }
     }
   ],
-  render(payload, context) {
+  render(payload) {
     const total = payload.items.reduce((sum, item) => sum + item.qty * item.price, 0);
-    const keepWithNext = context?.helpers.markerClass("keepWithNext") ?? "";
-    const avoidBreak = context?.helpers.markerClass("avoidBreak") ?? "";
-    const pageBreakBefore = context?.helpers.markerClass("pageBreakBefore") ?? "";
 
     return (
-      <main style={{ fontFamily: "Inter, sans-serif", padding: "24px", color: "#0f172a" }}>
-        <section className={keepWithNext}>
-          <h1 style={{ marginBottom: "8px" }}>Invoice {payload.invoiceNumber}</h1>
-          <p style={{ color: "#475569", marginTop: 0 }}>Customer: {payload.customerName}</p>
-          <p style={{ color: "#64748b", marginTop: "4px" }}>Issued: {payload.issuedAt}</p>
-        </section>
+      <Document>
+        <Page>
+          <Section style={{ padding: "24px" }}>
+            <KeepWithNext>
+              <Heading as="h1" style={{ marginBottom: "8px", color: "var(--df-pdf-color-accent)" }}>
+                Invoice {payload.invoiceNumber}
+              </Heading>
+              <Paragraph style={{ color: "var(--df-pdf-color-muted)", marginTop: 0 }}>
+                Customer: {payload.customerName}
+              </Paragraph>
+              <Paragraph style={{ color: "var(--df-pdf-color-muted)", marginTop: "4px" }}>
+                Issued: {payload.issuedAt}
+              </Paragraph>
+            </KeepWithNext>
 
-        <section className={avoidBreak}>
-          <h2 style={{ marginTop: "20px", marginBottom: "8px", fontSize: "16px" }}>Line Items</h2>
-          <table style={{ width: "100%", borderCollapse: "collapse", marginTop: "10px" }}>
-            <thead>
-              <tr>
-                <th style={{ textAlign: "left", borderBottom: "1px solid #e2e8f0", padding: "8px" }}>Item</th>
-                <th style={{ textAlign: "right", borderBottom: "1px solid #e2e8f0", padding: "8px" }}>Qty</th>
-                <th style={{ textAlign: "right", borderBottom: "1px solid #e2e8f0", padding: "8px" }}>Price</th>
-              </tr>
-            </thead>
-            <tbody>
-              {payload.items.map((item) => (
-                <tr key={item.name}>
-                  <td style={{ borderBottom: "1px solid #f1f5f9", padding: "8px" }}>{item.name}</td>
-                  <td style={{ textAlign: "right", borderBottom: "1px solid #f1f5f9", padding: "8px" }}>{item.qty}</td>
-                  <td style={{ textAlign: "right", borderBottom: "1px solid #f1f5f9", padding: "8px" }}>
-                    ${(item.price * item.qty).toFixed(2)}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          <p style={{ textAlign: "right", marginTop: "16px", fontWeight: 700 }}>Total: ${total.toFixed(2)}</p>
-        </section>
+            <AvoidBreakInside>
+              <Heading as="h2" style={{ marginTop: "20px", marginBottom: "8px", fontSize: "16px" }}>
+                Line Items
+              </Heading>
+              <Table style={{ marginTop: "10px" }}>
+                <TableHead>
+                  <TableRow>
+                    <TableHeaderCell style={{ textAlign: "left" }}>Item</TableHeaderCell>
+                    <TableHeaderCell style={{ textAlign: "right" }}>Qty</TableHeaderCell>
+                    <TableHeaderCell style={{ textAlign: "right" }}>Price</TableHeaderCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {payload.items.map((item) => (
+                    <TableRow key={item.name}>
+                      <TableCell>{item.name}</TableCell>
+                      <NumericCell>{item.qty}</NumericCell>
+                      <NumericCell>${(item.price * item.qty).toFixed(2)}</NumericCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+              <Paragraph style={{ textAlign: "right", marginTop: "16px", fontWeight: 700 }}>
+                Total: ${total.toFixed(2)}
+              </Paragraph>
+            </AvoidBreakInside>
 
-        <section className={pageBreakBefore}>
-          <h2 style={{ marginTop: "24px", fontSize: "16px" }}>Payment Terms</h2>
-          <p style={{ color: "#334155", lineHeight: 1.6 }}>
-            Payment due within 14 calendar days from invoice date. Late payments may incur additional charges.
-          </p>
-        </section>
-      </main>
+            <PageBreakBefore>
+              <Heading as="h2" style={{ marginTop: "24px", fontSize: "16px" }}>
+                Payment Terms
+              </Heading>
+              <Paragraph style={{ color: "var(--df-pdf-color-text)", lineHeight: 1.6 }}>
+                Payment due within 14 calendar days from invoice date. Late payments may incur
+                additional charges.
+              </Paragraph>
+            </PageBreakBefore>
+          </Section>
+        </Page>
+      </Document>
     );
   }
 });

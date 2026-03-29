@@ -120,6 +120,22 @@ describe("core pdf elements", () => {
                 },
                 pagination: {
                   template: "<div>{{pageNumber}} of {{totalPages}}</div>"
+                },
+                background: {
+                  template: "<div class='bg-layer'>Background Layer</div>"
+                },
+                foreground: {
+                  render() {
+                    return "<div class='fg-layer'>Foreground Layer</div>";
+                  }
+                },
+                bookmarks: {
+                  template: "[{\"title\":\"Intro\",\"target\":\"#intro\"}]"
+                },
+                pageRules: {
+                  render(context: { tokens: { pageXofY: string } }) {
+                    return `@page { @bottom-center { content: \"${context.tokens.pageXofY}\"; } }`;
+                  }
                 }
               },
               async render(payload: { name: string }) {
@@ -152,7 +168,13 @@ describe("core pdf elements", () => {
     expect(rendered.templatePdfElementCapabilities?.header.defined).toBe(true);
     expect(rendered.templatePdfElementCapabilities?.header.hasRender).toBe(true);
     expect(rendered.templatePdfElementCapabilities?.footer.hasTemplate).toBe(true);
+    expect(rendered.templatePdfElementCapabilities?.background.hasTemplate).toBe(true);
+    expect(rendered.templatePdfElementCapabilities?.foreground.hasRender).toBe(true);
+    expect(rendered.templatePdfElementCapabilities?.bookmarks.hasTemplate).toBe(true);
+    expect(rendered.templatePdfElementCapabilities?.pageRules.hasRender).toBe(true);
     expect(rendered.templatePdfElements?.footer?.template).toContain("{{pageNumber}}");
+    expect(rendered.templatePdfElements?.background?.template).toContain("Background Layer");
+    expect(rendered.templatePdfElements?.bookmarks?.template).toContain("\"Intro\"");
 
     const tocMarkup = await rendered.templatePdfElements?.toc?.render?.({
       headings: [{ id: "intro", level: 1, text: "Introduction" }]
@@ -165,6 +187,12 @@ describe("core pdf elements", () => {
     expect(headerMarkup).toContain("fragment:invoice-reference");
     expect(headerMarkup).toContain("\"runId\":\"run-123\"");
     expect(headerMarkup).toContain("\"marker\":\"df-page-break-before\"");
+
+    const pageRulesMarkup = await rendered.templatePdfElements?.pageRules?.render?.();
+    expect(pageRulesMarkup).toContain("{{pageXofY}}");
+
+    const foregroundMarkup = await rendered.templatePdfElements?.foreground?.render?.();
+    expect(foregroundMarkup).toContain("Foreground Layer");
 
     await registry.close();
   });

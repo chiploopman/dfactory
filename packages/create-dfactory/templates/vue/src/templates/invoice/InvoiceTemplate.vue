@@ -1,6 +1,24 @@
 <script setup lang="ts">
 import { computed } from "vue";
 
+import {
+  AvoidBreakInside,
+  Document,
+  Heading,
+  KeepWithNext,
+  NumericCell,
+  Page,
+  PageBreakBefore,
+  Paragraph,
+  Section,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeaderCell,
+  TableRow
+} from "@dfactory/pdf-primitives-vue";
+
 interface InvoiceItem {
   name: string;
   qty: number;
@@ -10,18 +28,12 @@ interface InvoiceItem {
 interface InvoicePayload {
   invoiceNumber: string;
   customerName: string;
+  issuedAt: string;
   items: InvoiceItem[];
-}
-
-interface MarkerClasses {
-  keepWithNext: string;
-  avoidBreak: string;
-  pageBreakBefore: string;
 }
 
 const props = defineProps<{
   payload: InvoicePayload;
-  markerClasses: MarkerClasses;
 }>();
 
 const total = computed(() => {
@@ -30,41 +42,55 @@ const total = computed(() => {
 </script>
 
 <template>
-  <main style="font-family: Inter, sans-serif; padding: 24px; color: #0f172a">
-    <section :class="props.markerClasses.keepWithNext">
-      <h1 style="margin-bottom: 8px">Invoice {{ props.payload.invoiceNumber }}</h1>
-      <p style="color: #475569; margin-top: 0">Customer: {{ props.payload.customerName }}</p>
-    </section>
+  <Document>
+    <Page>
+      <Section :style="{ padding: '24px' }">
+        <KeepWithNext>
+          <Heading as="h1" :style="{ marginBottom: '8px', color: 'var(--df-pdf-color-accent)' }">
+            Invoice {{ props.payload.invoiceNumber }}
+          </Heading>
+          <Paragraph :style="{ color: 'var(--df-pdf-color-muted)', marginTop: 0 }">
+            Customer: {{ props.payload.customerName }}
+          </Paragraph>
+          <Paragraph :style="{ color: 'var(--df-pdf-color-muted)', marginTop: '4px' }">
+            Issued: {{ props.payload.issuedAt }}
+          </Paragraph>
+        </KeepWithNext>
 
-    <section :class="props.markerClasses.avoidBreak">
-      <h2 style="margin-top: 20px; margin-bottom: 8px; font-size: 16px">Line Items</h2>
-      <table style="width: 100%; border-collapse: collapse; margin-top: 10px">
-        <thead>
-          <tr>
-            <th style="text-align: left; border-bottom: 1px solid #e2e8f0; padding: 8px">Item</th>
-            <th style="text-align: right; border-bottom: 1px solid #e2e8f0; padding: 8px">Qty</th>
-            <th style="text-align: right; border-bottom: 1px solid #e2e8f0; padding: 8px">Price</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="item in props.payload.items" :key="item.name">
-            <td style="border-bottom: 1px solid #f1f5f9; padding: 8px">{{ item.name }}</td>
-            <td style="text-align: right; border-bottom: 1px solid #f1f5f9; padding: 8px">{{ item.qty }}</td>
-            <td style="text-align: right; border-bottom: 1px solid #f1f5f9; padding: 8px">
-              ${{ (item.price * item.qty).toFixed(2) }}
-            </td>
-          </tr>
-        </tbody>
-      </table>
+        <AvoidBreakInside>
+          <Heading as="h2" :style="{ marginTop: '20px', marginBottom: '8px', fontSize: '16px' }">
+            Line Items
+          </Heading>
+          <Table :style="{ marginTop: '10px' }">
+            <TableHead>
+              <TableRow>
+                <TableHeaderCell :style="{ textAlign: 'left' }">Item</TableHeaderCell>
+                <TableHeaderCell :style="{ textAlign: 'right' }">Qty</TableHeaderCell>
+                <TableHeaderCell :style="{ textAlign: 'right' }">Price</TableHeaderCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              <TableRow v-for="item in props.payload.items" :key="item.name">
+                <TableCell>{{ item.name }}</TableCell>
+                <NumericCell>{{ item.qty }}</NumericCell>
+                <NumericCell>${{ (item.price * item.qty).toFixed(2) }}</NumericCell>
+              </TableRow>
+            </TableBody>
+          </Table>
 
-      <p style="text-align: right; margin-top: 16px; font-weight: 700">Total: ${{ total.toFixed(2) }}</p>
-    </section>
+          <Paragraph :style="{ textAlign: 'right', marginTop: '16px', fontWeight: 700 }">
+            Total: ${{ total.toFixed(2) }}
+          </Paragraph>
+        </AvoidBreakInside>
 
-    <section :class="props.markerClasses.pageBreakBefore">
-      <h2 style="margin-top: 24px; font-size: 16px">Payment Terms</h2>
-      <p style="color: #334155; line-height: 1.6">
-        Payment due within 14 calendar days from invoice date. Late payments may incur additional charges.
-      </p>
-    </section>
-  </main>
+        <PageBreakBefore>
+          <Heading as="h2" :style="{ marginTop: '24px', fontSize: '16px' }">Payment Terms</Heading>
+          <Paragraph :style="{ color: 'var(--df-pdf-color-text)', lineHeight: 1.6 }">
+            Payment due within 14 calendar days from invoice date. Late payments may incur additional
+            charges.
+          </Paragraph>
+        </PageBreakBefore>
+      </Section>
+    </Page>
+  </Document>
 </template>

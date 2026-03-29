@@ -13,6 +13,8 @@
     "@dfactory/core": "workspace:*",
     "@dfactory/framework-vue": "workspace:*",
     "@dfactory/module-loader-vite": "workspace:*",
+    "@dfactory/pdf-primitives-core": "workspace:*",
+    "@dfactory/pdf-primitives-vue": "workspace:*",
     "@dfactory/pdf-feature-standard": "workspace:*",
     "@dfactory/template-kit": "workspace:*",
     "vue": "^3.5.21",

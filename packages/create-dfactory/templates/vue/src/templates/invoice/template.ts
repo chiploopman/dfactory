@@ -17,6 +17,7 @@ const template = defineTemplate({
   schema: z.object({
     invoiceNumber: z.string(),
     customerName: z.string(),
+    issuedAt: z.string(),
     items: z.array(
       z.object({
         name: z.string(),
@@ -41,11 +42,19 @@ const template = defineTemplate({
     headerFooter: {
       enabled: true,
       footerTemplate:
-        "<div style=\"width:100%;font-size:9px;padding:0 12px;color:#64748b;display:flex;justify-content:space-between;\"><span>{{title}}</span><span>{{pageNumber}} / {{totalPages}}</span></div>"
+        "<div style=\"width:100%;font-size:9px;padding:0 12px;color:#64748b;display:flex;justify-content:space-between;\"><span>{{title}}</span><span>{{pageXofY}}</span></div>"
     },
     metadata: {
       title: "Invoice Document",
       keywords: ["invoice", "billing", "starter"]
+    },
+    theme: {
+      font: {
+        family: "Inter, 'Segoe UI', sans-serif"
+      },
+      color: {
+        accent: "#1d4ed8"
+      }
     }
   },
   examples: [
@@ -54,6 +63,7 @@ const template = defineTemplate({
       payload: {
         invoiceNumber: "INV-1001",
         customerName: "Northwind Trading",
+        issuedAt: "2026-03-27",
         items: [
           { name: "Consulting", qty: 2, price: 420 },
           { name: "Support", qty: 1, price: 180 }
@@ -61,14 +71,9 @@ const template = defineTemplate({
       }
     }
   ],
-  render(payload, context) {
+  render(payload) {
     return h(InvoiceTemplate, {
-      payload,
-      markerClasses: {
-        keepWithNext: context?.helpers.markerClass("keepWithNext") ?? "",
-        avoidBreak: context?.helpers.markerClass("avoidBreak") ?? "",
-        pageBreakBefore: context?.helpers.markerClass("pageBreakBefore") ?? ""
-      }
+      payload
     });
   }
 });

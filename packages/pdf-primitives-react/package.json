@@ -1,29 +1,29 @@
 {
-  "name": "@dfactory/pdf-feature-pagedjs",
+  "name": "@dfactory/pdf-primitives-react",
   "version": "0.1.0",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "exports": {
     ".": {
-      "types": "./src/index.ts",
+      "types": "./src/index.tsx",
       "import": "./dist/index.js"
     }
   },
   "files": ["dist", "src"],
   "scripts": {
-    "build": "tsup src/index.ts --format esm --dts",
+    "build": "tsup src/index.tsx --format esm --dts",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "lint": "eslint src --ext .ts",
+    "lint": "eslint src --ext .ts,.tsx",
     "test": "vitest run --passWithNoTests",
     "clean": "rm -rf dist"
   },
   "dependencies": {
     "@dfactory/pdf-primitives-core": "workspace:*",
-    "@dfactory/renderer-playwright": "workspace:*",
-    "pagedjs": "^0.4.3"
+    "react": "^19.1.1"
   },
   "devDependencies": {
+    "@types/react": "^19.1.13",
     "tsup": "^8.3.5"
   }
 }

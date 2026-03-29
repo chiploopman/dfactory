@@ -57,8 +57,16 @@ const templateMetaSchema = z.object({
 
 const MARKER_CLASS_MAP: Record<PdfMarkerName, string> = {
   pageBreakBefore: "df-page-break-before",
+  pageBreakAfter: "df-page-break-after",
   keepWithNext: "df-keep-with-next",
-  avoidBreak: "df-avoid-break"
+  keepTogether: "df-keep-together",
+  avoidBreak: "df-avoid-break",
+  avoidBreakInside: "df-avoid-break-inside",
+  startOnLeftPage: "df-start-on-left-page",
+  startOnRightPage: "df-start-on-right-page",
+  startOnRecto: "df-start-on-recto",
+  startOnVerso: "df-start-on-verso",
+  pageGroup: "df-page-group"
 };
 
 function assertTemplateModule(value: unknown, filePath: string): TemplateModule {
@@ -123,6 +131,30 @@ function mergePdfTemplateConfig(
     watermark: {
       ...(base?.watermark ?? {}),
       ...(override?.watermark ?? {})
+    },
+    theme: {
+      ...(base?.theme ?? {}),
+      ...(override?.theme ?? {}),
+      font: {
+        ...(base?.theme?.font ?? {}),
+        ...(override?.theme?.font ?? {})
+      },
+      space: {
+        ...(base?.theme?.space ?? {}),
+        ...(override?.theme?.space ?? {})
+      },
+      color: {
+        ...(base?.theme?.color ?? {}),
+        ...(override?.theme?.color ?? {})
+      },
+      radius: {
+        ...(base?.theme?.radius ?? {}),
+        ...(override?.theme?.radius ?? {})
+      },
+      border: {
+        ...(base?.theme?.border ?? {}),
+        ...(override?.theme?.border ?? {})
+      }
     }
   };
 }
@@ -145,6 +177,9 @@ function createTemplateRenderContext(options: {
     helpers: {
       markerClass(name) {
         return MARKER_CLASS_MAP[name] ?? "";
+      },
+      markers: {
+        ...MARKER_CLASS_MAP
       }
     }
   };
@@ -158,6 +193,7 @@ function createTokenHelpers(options: {
   const tokenValues = {
     pageNumber: "{{pageNumber}}",
     totalPages: "{{totalPages}}",
+    pageXofY: "{{pageXofY}}",
     date: "{{date}}",
     title: "{{title}}",
     templateId: "{{templateId}}"
@@ -166,6 +202,7 @@ function createTokenHelpers(options: {
   const resolve = (extraTokens?: Record<string, string>): Record<string, string> => ({
     [tokenValues.pageNumber]: `<span class="pageNumber"></span>`,
     [tokenValues.totalPages]: `<span class="totalPages"></span>`,
+    [tokenValues.pageXofY]: `<span class="pageNumber"></span> / <span class="totalPages"></span>`,
     [tokenValues.date]: options.now.toISOString(),
     [tokenValues.title]: options.title ?? "",
     [tokenValues.templateId]: options.templateId,

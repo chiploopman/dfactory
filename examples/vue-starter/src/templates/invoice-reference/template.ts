@@ -238,8 +238,7 @@ const template = defineTemplate({
       render(context) {
         return h(InvoiceReferencePagination, {
           pageNumberToken: context.tokens.pageNumber,
-          totalPagesToken: context.tokens.totalPages,
-          markerClassPreview: context.pagination.markerClass("avoidBreak")
+          totalPagesToken: context.tokens.totalPages
         });
       }
     }
@@ -286,14 +285,9 @@ const template = defineTemplate({
       })
     }
   ],
-  render(payload, context) {
+  render(payload) {
     return h(InvoiceReferenceDocument, {
-      payload,
-      markerClasses: {
-        keepWithNext: context?.helpers.markerClass("keepWithNext") ?? "",
-        avoidBreak: context?.helpers.markerClass("avoidBreak") ?? "",
-        pageBreakBefore: context?.helpers.markerClass("pageBreakBefore") ?? ""
-      }
+      payload
     });
   }
 });

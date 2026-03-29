@@ -103,6 +103,18 @@ describe("pdf-feature-standard", () => {
         },
         pagination: {
           template: "<div>PAGINATION-ELEMENT</div>"
+        },
+        background: {
+          template: "<div>BACKGROUND-ELEMENT</div>"
+        },
+        foreground: {
+          template: "<div>FOREGROUND-ELEMENT</div>"
+        },
+        bookmarks: {
+          template: "[{\"title\":\"Intro\"}]"
+        },
+        pageRules: {
+          template: "@page { margin: 20mm; }"
         }
       },
       html: "<!doctype html><html><head></head><body><h1>Main</h1><h2>Sub</h2></body></html>",
@@ -116,8 +128,29 @@ describe("pdf-feature-standard", () => {
     expect(html).toContain("data-custom-toc");
     expect(html).toContain("WATERMARK-ELEMENT");
     expect(html).toContain("PAGINATION-ELEMENT");
+    expect(html).toContain("BACKGROUND-ELEMENT");
+    expect(html).toContain("FOREGROUND-ELEMENT");
+    expect(html).toContain("data-dfactory-element=\"bookmarks\"");
+    expect(html).toContain("data-dfactory-element=\"pageRules\"");
     expect(context.resolvedFeatures.headerFooter?.headerTemplate).toContain("Header {{title}}");
     expect(context.resolvedFeatures.headerFooter?.footerTemplate).toContain("Footer {{pageNumber}}");
     expect(context.resolvedFeatures.watermark?.text).toBeUndefined();
+  });
+
+  it("warns when paged-media-only markers are used without pagedjs mode", () => {
+    const context = {
+      resolvedFeatures: {
+        pagination: {
+          mode: "css"
+        }
+      },
+      html: "<html><body><div class='df-start-on-right-page'>section</div></body></html>",
+      diagnostics: [],
+      options: {}
+    } as Parameters<NonNullable<typeof pdfFeaturePlugin.preflight>>[0];
+
+    const diagnostics = pdfFeaturePlugin.preflight?.(context) ?? [];
+    expect(Array.isArray(diagnostics)).toBe(true);
+    expect(diagnostics.some((entry) => entry.code === "pagination.paged-only-marker")).toBe(true);
   });
 });

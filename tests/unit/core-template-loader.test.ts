@@ -4,7 +4,6 @@ import path from "node:path";
 
 import { afterEach, describe, expect, it } from "vitest";
 
-import { frameworkReactPlugin } from "../../packages/adapter-react/src/index.ts";
 import { frameworkVuePlugin } from "../../packages/adapter-vue/src/index.ts";
 import { moduleLoader as bundleLoader } from "../../packages/module-loader-bundle/src/index.ts";
 import { moduleLoader as viteLoader } from "../../packages/module-loader-vite/src/index.ts";
@@ -40,37 +39,51 @@ describe("module loaders", () => {
   });
 
   it("bundle loader respects nearest tsconfig for react tsx templates", async () => {
-    const loader = await bundleLoader.create({
-      cwd: process.cwd(),
-      config: {} as never,
-      plugins: []
-    });
-    openLoaders.push(loader);
-
-    const modulePath = path.join(
-      process.cwd(),
-      "examples/react-starter/src/templates/invoice-reference/template.tsx"
+    const appDir = await fs.mkdtemp(
+      path.join(process.cwd(), "examples/react-starter/.dfactory-loader-react-jsx-")
     );
-    const mod = (await loader.load(modulePath)) as {
-      examples?: Array<{ payload: unknown }>;
-      render: (
-        payload: unknown,
-        context?: { helpers: { markerClass: (name: string) => string } }
-      ) => unknown | Promise<unknown>;
-    };
+    const modulePath = path.join(appDir, "template.tsx");
 
-    const payload = mod.examples?.[0]?.payload;
-    expect(payload).toBeTruthy();
+    await fs.writeFile(
+      modulePath,
+      `export const examples = [
+  {
+    name: "default",
+    payload: { name: "Alice" }
+  }
+];
 
-    const element = await mod.render(payload, {
-      helpers: {
-        markerClass: () => ""
-      }
-    });
+export function render(payload) {
+  return <main>Hello {payload.name}</main>;
+}
+`
+    );
+    try {
+      const loader = await bundleLoader.create({
+        cwd: process.cwd(),
+        config: {} as never,
+        plugins: []
+      });
+      openLoaders.push(loader);
 
-    const adapter = await frameworkReactPlugin.createAdapter();
-    const html = await adapter.renderFragment({ value: element });
-    expect(html).toContain("Invoice");
+      const mod = (await loader.load(modulePath)) as {
+        examples?: Array<{ payload: unknown }>;
+        render: (payload: unknown) => unknown | Promise<unknown>;
+      };
+
+      const payload = mod.examples?.[0]?.payload;
+      expect(payload).toBeTruthy();
+
+      const element = await mod.render(payload);
+      expect(element).toBeTruthy();
+      expect(element).toMatchObject({
+        props: {
+          children: ["Hello ", "Alice"]
+        }
+      });
+    } finally {
+      await fs.rm(appDir, { recursive: true, force: true });
+    }
   });
 
   it("vite loader resolves vue single-file component imports", async () => {

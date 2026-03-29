@@ -19,6 +19,7 @@ interface FrameworkTemplateSpec {
   framework: SupportedFramework;
   frameworkPluginPackage: "@dfactory/framework-react" | "@dfactory/framework-vue";
   moduleLoaderPackage: "@dfactory/module-loader-bundle" | "@dfactory/module-loader-vite";
+  primitivesPackage: "@dfactory/pdf-primitives-react" | "@dfactory/pdf-primitives-vue";
   templateDirectory: string;
 }
 
@@ -38,12 +39,14 @@ const FRAMEWORK_SPECS: Record<SupportedFramework, FrameworkTemplateSpec> = {
     framework: "react",
     frameworkPluginPackage: "@dfactory/framework-react",
     moduleLoaderPackage: "@dfactory/module-loader-bundle",
+    primitivesPackage: "@dfactory/pdf-primitives-react",
     templateDirectory: "react"
   },
   vue: {
     framework: "vue",
     frameworkPluginPackage: "@dfactory/framework-vue",
     moduleLoaderPackage: "@dfactory/module-loader-vite",
+    primitivesPackage: "@dfactory/pdf-primitives-vue",
     templateDirectory: "vue"
   }
 };
@@ -144,6 +147,8 @@ function applyPackageUpdates(existing: PackageJson, frameworkSpec: FrameworkTemp
     "@dfactory/core": "latest",
     "@dfactory/template-kit": "latest",
     "@dfactory/pdf-feature-standard": "latest",
+    "@dfactory/pdf-primitives-core": "latest",
+    [frameworkSpec.primitivesPackage]: "latest",
     [frameworkSpec.frameworkPluginPackage]: "latest",
     [frameworkSpec.moduleLoaderPackage]: "latest"
   };

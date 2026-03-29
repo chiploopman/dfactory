@@ -20,6 +20,7 @@
   },
   "dependencies": {
     "@dfactory/core": "workspace:*",
+    "@dfactory/pdf-primitives-core": "workspace:*",
     "@dfactory/renderer-playwright": "workspace:*",
     "cheerio": "^1.1.2"
   },

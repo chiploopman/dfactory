@@ -3,13 +3,28 @@ import type { ZodTypeAny } from "zod";
 export type RenderMode = "html" | "pdf";
 export type PdfPageSize = "A4" | "Letter";
 export type PdfPaginationMode = "css" | "pagedjs";
-export type PdfMarkerName = "pageBreakBefore" | "keepWithNext" | "avoidBreak";
+export type PdfMarkerName =
+  | "pageBreakBefore"
+  | "pageBreakAfter"
+  | "keepWithNext"
+  | "keepTogether"
+  | "avoidBreak"
+  | "avoidBreakInside"
+  | "startOnLeftPage"
+  | "startOnRightPage"
+  | "startOnRecto"
+  | "startOnVerso"
+  | "pageGroup";
 export const PDF_TEMPLATE_ELEMENT_NAMES = [
   "toc",
   "header",
   "footer",
   "watermark",
-  "pagination"
+  "pagination",
+  "background",
+  "foreground",
+  "bookmarks",
+  "pageRules"
 ] as const;
 export type PdfTemplateElementName = (typeof PDF_TEMPLATE_ELEMENT_NAMES)[number];
 
@@ -24,6 +39,7 @@ export interface TemplateMeta {
 
 export interface TemplateRenderHelpers {
   markerClass: (name: PdfMarkerName) => string;
+  markers: Record<PdfMarkerName, string>;
 }
 
 export interface TemplateTocHeading {
@@ -35,6 +51,7 @@ export interface TemplateTocHeading {
 export interface TemplateTokenHelpers {
   pageNumber: string;
   totalPages: string;
+  pageXofY: string;
   date: string;
   title: string;
   templateId: string;
@@ -106,6 +123,49 @@ export interface PdfTemplateWatermarkConfig {
   fontSize?: number;
 }
 
+export interface PdfThemeFontConfig {
+  family?: string;
+  monoFamily?: string;
+  size?: string;
+  lineHeight?: string;
+}
+
+export interface PdfThemeSpaceConfig {
+  xs?: string;
+  sm?: string;
+  md?: string;
+  lg?: string;
+  xl?: string;
+}
+
+export interface PdfThemeColorConfig {
+  text?: string;
+  muted?: string;
+  border?: string;
+  surface?: string;
+  surfaceAlt?: string;
+  accent?: string;
+}
+
+export interface PdfThemeRadiusConfig {
+  sm?: string;
+  md?: string;
+  lg?: string;
+}
+
+export interface PdfThemeBorderConfig {
+  width?: string;
+  style?: string;
+}
+
+export interface PdfThemeConfig {
+  font?: PdfThemeFontConfig;
+  space?: PdfThemeSpaceConfig;
+  color?: PdfThemeColorConfig;
+  radius?: PdfThemeRadiusConfig;
+  border?: PdfThemeBorderConfig;
+}
+
 export interface PdfTemplateConfig {
   page?: PdfTemplatePageConfig;
   headerFooter?: PdfTemplateHeaderFooterConfig;
@@ -115,6 +175,7 @@ export interface PdfTemplateConfig {
   fonts?: PdfTemplateFontConfig;
   metadata?: PdfTemplateMetadataConfig;
   watermark?: PdfTemplateWatermarkConfig;
+  theme?: PdfThemeConfig;
 }
 
 export type TemplatePdfFeatureOverrides = Partial<PdfTemplateConfig>;

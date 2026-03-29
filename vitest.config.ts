@@ -11,12 +11,17 @@ export default defineConfig({
       "@dfactory/pdf-feature-standard": path.resolve(__dirname, "packages/pdf-feature-standard/src/index.ts"),
       "@dfactory/pdf-feature-pagedjs": path.resolve(__dirname, "packages/pdf-feature-pagedjs/src/index.ts"),
       "@dfactory/pdf-feature-pdf-lib": path.resolve(__dirname, "packages/pdf-feature-pdf-lib/src/index.ts"),
+      "@dfactory/pdf-primitives-core": path.resolve(__dirname, "packages/pdf-primitives-core/src/index.ts"),
+      "@dfactory/pdf-primitives-react": path.resolve(__dirname, "packages/pdf-primitives-react/src/index.tsx"),
+      "@dfactory/pdf-primitives-vue": path.resolve(__dirname, "packages/pdf-primitives-vue/src/index.ts"),
       "@dfactory/module-loader-bundle": path.resolve(__dirname, "packages/module-loader-bundle/src/index.ts"),
       "@dfactory/module-loader-vite": path.resolve(__dirname, "packages/module-loader-vite/src/index.ts"),
       "@dfactory/renderer-playwright": path.resolve(__dirname, "packages/renderer-playwright/src/index.ts"),
       "@dfactory/server": path.resolve(__dirname, "packages/server/src/index.ts"),
       "@dfactory/template-kit": path.resolve(__dirname, "packages/template-kit/src/index.ts"),
-      "@dfactory/ui/node": path.resolve(__dirname, "packages/ui/node/index.js")
+      "@dfactory/ui/node": path.resolve(__dirname, "packages/ui/node/index.js"),
+      react: path.resolve(__dirname, "packages/adapter-react/node_modules/react"),
+      vue: path.resolve(__dirname, "packages/adapter-vue/node_modules/vue")
     }
   },
   test: {

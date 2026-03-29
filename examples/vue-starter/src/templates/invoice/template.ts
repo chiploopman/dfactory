@@ -42,11 +42,19 @@ const template = defineTemplate({
     headerFooter: {
       enabled: true,
       footerTemplate:
-        "<div style=\"width:100%;font-size:9px;padding:0 12px;color:#64748b;display:flex;justify-content:space-between;\"><span>{{title}}</span><span>{{pageNumber}} / {{totalPages}}</span></div>"
+        "<div style=\"width:100%;font-size:9px;padding:0 12px;color:#64748b;display:flex;justify-content:space-between;\"><span>{{title}}</span><span>{{pageXofY}}</span></div>"
     },
     metadata: {
       title: "Invoice Document",
       keywords: ["invoice", "billing", "starter"]
+    },
+    theme: {
+      font: {
+        family: "Inter, 'Segoe UI', sans-serif"
+      },
+      color: {
+        accent: "#1d4ed8"
+      }
     }
   },
   examples: [
@@ -63,14 +71,9 @@ const template = defineTemplate({
       }
     }
   ],
-  render(payload, context) {
+  render(payload) {
     return h(InvoiceTemplate, {
-      payload,
-      markerClasses: {
-        keepWithNext: context?.helpers.markerClass("keepWithNext") ?? "",
-        avoidBreak: context?.helpers.markerClass("avoidBreak") ?? "",
-        pageBreakBefore: context?.helpers.markerClass("pageBreakBefore") ?? ""
-      }
+      payload
     });
   }
 });

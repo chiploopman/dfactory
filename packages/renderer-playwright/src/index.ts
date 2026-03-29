@@ -163,6 +163,30 @@ function mergePdfTemplateConfig(
     watermark: {
       ...(base?.watermark ?? {}),
       ...(override?.watermark ?? {})
+    },
+    theme: {
+      ...(base?.theme ?? {}),
+      ...(override?.theme ?? {}),
+      font: {
+        ...(base?.theme?.font ?? {}),
+        ...(override?.theme?.font ?? {})
+      },
+      space: {
+        ...(base?.theme?.space ?? {}),
+        ...(override?.theme?.space ?? {})
+      },
+      color: {
+        ...(base?.theme?.color ?? {}),
+        ...(override?.theme?.color ?? {})
+      },
+      radius: {
+        ...(base?.theme?.radius ?? {}),
+        ...(override?.theme?.radius ?? {})
+      },
+      border: {
+        ...(base?.theme?.border ?? {}),
+        ...(override?.theme?.border ?? {})
+      }
     }
   };
 }
@@ -175,6 +199,7 @@ function replaceHeaderFooterTokens(template: string, options: {
   const replacements: Record<string, string> = {
     "{{pageNumber}}": `<span class="pageNumber"></span>`,
     "{{totalPages}}": `<span class="totalPages"></span>`,
+    "{{pageXofY}}": `<span class="pageNumber"></span> / <span class="totalPages"></span>`,
     "{{date}}": new Date().toISOString(),
     "{{title}}": options.title ?? "",
     "{{templateId}}": options.templateId ?? "",

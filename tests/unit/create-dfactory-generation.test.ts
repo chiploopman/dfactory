@@ -55,9 +55,12 @@ describe("create-dfactory generation", () => {
     expect(referenceTemplate).toContain("pdfElements");
     expect(packageJson.dependencies?.["@dfactory/framework-react"]).toBe("latest");
     expect(packageJson.dependencies?.["@dfactory/module-loader-bundle"]).toBe("latest");
+    expect(packageJson.dependencies?.["@dfactory/pdf-primitives-core"]).toBe("latest");
+    expect(packageJson.dependencies?.["@dfactory/pdf-primitives-react"]).toBe("latest");
     expect(packageJson.dependencies?.["@dfactory/pdf-feature-standard"]).toBe("latest");
     expect(packageJson.dependencies?.["@dfactory/template-kit"]).toBe("latest");
     expect(packageJson.dependencies?.["@dfactory/framework-vue"]).toBeUndefined();
+    expect(packageJson.dependencies?.["@dfactory/pdf-primitives-vue"]).toBeUndefined();
   });
 
   it("scaffolds vue plugin config and template files", async () => {
@@ -107,7 +110,10 @@ describe("create-dfactory generation", () => {
     expect(referenceSfc).toContain("<template>");
     expect(packageJson.dependencies?.["@dfactory/framework-vue"]).toBe("latest");
     expect(packageJson.dependencies?.["@dfactory/module-loader-vite"]).toBe("latest");
+    expect(packageJson.dependencies?.["@dfactory/pdf-primitives-core"]).toBe("latest");
+    expect(packageJson.dependencies?.["@dfactory/pdf-primitives-vue"]).toBe("latest");
     expect(packageJson.dependencies?.["@dfactory/pdf-feature-standard"]).toBe("latest");
     expect(packageJson.dependencies?.["@dfactory/template-kit"]).toBe("latest");
+    expect(packageJson.dependencies?.["@dfactory/pdf-primitives-react"]).toBeUndefined();
   });
 });

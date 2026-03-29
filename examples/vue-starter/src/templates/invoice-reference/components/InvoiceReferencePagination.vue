@@ -1,14 +1,14 @@
 <script setup lang="ts">
+import { AvoidBreakInside } from "@dfactory/pdf-primitives-vue";
+
 defineProps<{
   pageNumberToken: string;
   totalPagesToken: string;
-  markerClassPreview: string;
 }>();
 </script>
 
 <template>
-  <div
-    :class="markerClassPreview"
+  <AvoidBreakInside
     style="
       width: 100%;
       padding: 4px 16px 8px;
@@ -20,5 +20,5 @@ defineProps<{
   >
     <span>DFactory Reference Pagination Layer</span>
     <span>Page {{ pageNumberToken }} of {{ totalPagesToken }}</span>
-  </div>
+  </AvoidBreakInside>
 </template>

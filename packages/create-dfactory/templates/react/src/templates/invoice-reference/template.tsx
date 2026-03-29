@@ -247,7 +247,6 @@ const template = defineTemplate({
           <InvoiceReferencePagination
             pageNumberToken={context.tokens.pageNumber}
             totalPagesToken={context.tokens.totalPages}
-            markerClassPreview={context.pagination.markerClass("avoidBreak")}
           />
         );
       }
@@ -295,18 +294,8 @@ const template = defineTemplate({
       })
     }
   ],
-  render(payload, context) {
-    return (
-      <InvoiceReferenceDocument
-        payload={payload}
-        markerClasses={{
-          keepWithNext: context?.helpers.markerClass("keepWithNext") ?? "",
-          avoidBreak: context?.helpers.markerClass("avoidBreak") ?? "",
-          pageBreakBefore:
-            context?.helpers.markerClass("pageBreakBefore") ?? ""
-        }}
-      />
-    );
+  render(payload) {
+    return <InvoiceReferenceDocument payload={payload} />;
   }
 });
 

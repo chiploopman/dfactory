@@ -1,8 +1,16 @@
 import { Buffer } from "node:buffer";
 
 import { load as loadHtml } from "cheerio";
+import {
+  PDF_ONLY_CLASS,
+  PDF_PREVIEW_ONLY_CLASS,
+  PDF_PAGED_MEDIA_ONLY_MARKERS,
+  PDF_PRIMITIVE_MARKER_CLASSES,
+  stringifyPdfThemeCssVariables
+} from "@dfactory/pdf-primitives-core";
 import type {
   PdfTemplateConfig,
+  PdfTemplateElementName,
   TemplateTocHeading
 } from "@dfactory/core";
 import type {
@@ -18,6 +26,9 @@ const DEFAULT_ASSET_LIMITS = {
 } as const;
 
 const DATA_URL_PATTERN = /^data:[^;]+;base64,/i;
+const PAGED_MEDIA_ONLY_CLASS_NAMES = PDF_PAGED_MEDIA_ONLY_MARKERS.map((markerName) => {
+  return PDF_PRIMITIVE_MARKER_CLASSES[markerName];
+});
 
 const assetCache = new Map<string, string>();
 
@@ -74,7 +85,7 @@ function appendBodyHtml(html: string, fragment: string): string {
 
 async function resolveElementMarkup(
   context: PdfFeatureHtmlContext,
-  element: "toc" | "header" | "footer" | "watermark" | "pagination",
+  element: PdfTemplateElementName,
   options?: { headings?: TemplateTocHeading[] }
 ): Promise<string | undefined> {
   const definition = context.templatePdfElements?.[element];
@@ -94,6 +105,12 @@ async function resolveElementMarkup(
     return definition.template;
   }
   return undefined;
+}
+
+function appendHeadHtml(html: string, fragment: string): string {
+  const $ = loadHtml(html);
+  $("head").append(fragment);
+  return $.html();
 }
 
 async function applyToc(context: PdfFeatureHtmlContext): Promise<void> {
@@ -174,18 +191,127 @@ async function applyPaginationElement(context: PdfFeatureHtmlContext): Promise<v
   });
 }
 
+async function applyBackgroundElement(context: PdfFeatureHtmlContext): Promise<void> {
+  const backgroundMarkup = await resolveElementMarkup(context, "background");
+  if (!backgroundMarkup) {
+    return;
+  }
+
+  context.html = appendBodyHtml(
+    context.html,
+    `<div class="df-background-layer" data-dfactory-element="background">${backgroundMarkup}</div>`
+  );
+
+  context.diagnostics.push({
+    pluginId: "@dfactory/pdf-feature-standard",
+    level: "info",
+    code: "background.element",
+    message: "Rendered background layer using first-class template element."
+  });
+}
+
+async function applyForegroundElement(context: PdfFeatureHtmlContext): Promise<void> {
+  const foregroundMarkup = await resolveElementMarkup(context, "foreground");
+  if (!foregroundMarkup) {
+    return;
+  }
+
+  context.html = appendBodyHtml(
+    context.html,
+    `<div class="df-foreground-layer" data-dfactory-element="foreground">${foregroundMarkup}</div>`
+  );
+
+  context.diagnostics.push({
+    pluginId: "@dfactory/pdf-feature-standard",
+    level: "info",
+    code: "foreground.element",
+    message: "Rendered foreground layer using first-class template element."
+  });
+}
+
+async function applyBookmarksElement(context: PdfFeatureHtmlContext): Promise<void> {
+  const bookmarksMarkup = await resolveElementMarkup(context, "bookmarks");
+  if (!bookmarksMarkup) {
+    return;
+  }
+
+  context.html = appendHeadHtml(
+    context.html,
+    `<meta data-dfactory-element="bookmarks" content="${encodeURIComponent(bookmarksMarkup)}" />`
+  );
+
+  context.diagnostics.push({
+    pluginId: "@dfactory/pdf-feature-standard",
+    level: "info",
+    code: "bookmarks.element",
+    message: "Captured bookmark payload from first-class template element."
+  });
+}
+
+async function applyPageRulesElement(context: PdfFeatureHtmlContext): Promise<void> {
+  const pageRulesMarkup = await resolveElementMarkup(context, "pageRules");
+  if (!pageRulesMarkup) {
+    return;
+  }
+
+  context.html = appendHeadHtml(
+    context.html,
+    `<style data-dfactory-element="pageRules">${pageRulesMarkup}</style>`
+  );
+
+  context.diagnostics.push({
+    pluginId: "@dfactory/pdf-feature-standard",
+    level: "info",
+    code: "pageRules.element",
+    message: "Injected page rules from first-class template element."
+  });
+}
+
 function buildFeatureStyles(features: PdfTemplateConfig): string {
+  const themeCssVariables = stringifyPdfThemeCssVariables(features.theme);
   const rules: string[] = [
-    `.df-page-break-before { break-before: page; page-break-before: always; }`,
-    `.df-keep-with-next { break-after: avoid-page; page-break-after: avoid; }`,
-    `.df-avoid-break { break-inside: avoid-page; page-break-inside: avoid; }`,
-    `.df-toc { margin-bottom: 24px; padding: 16px; border: 1px solid rgba(15, 23, 42, 0.08); border-radius: 8px; }`,
-    `.df-toc h2 { margin: 0 0 12px; font-size: 16px; }`,
-    `.df-toc ol { margin: 0; padding: 0 0 0 16px; }`,
-    `.df-toc-item { margin: 4px 0; }`,
+    `:root { ${themeCssVariables} }`,
+    `body, [data-df-primitive="document"] { font-family: var(--df-pdf-font-family); color: var(--df-pdf-color-text); font-size: var(--df-pdf-font-size); line-height: var(--df-pdf-line-height); background: var(--df-pdf-color-surface); }`,
+    `.df-page { width: 100%; min-height: 100%; }`,
+    `.df-section, .df-block, .df-stack, .df-row, .df-columns, .df-column, .df-grid, .df-grid-item { box-sizing: border-box; }`,
+    `.df-stack > * + * { margin-top: var(--df-pdf-space-sm); }`,
+    `.df-row { display: flex; gap: var(--df-pdf-space-md); align-items: flex-start; }`,
+    `.df-columns { display: flex; gap: var(--df-pdf-space-md); }`,
+    `.df-column { flex: 1 1 0%; min-width: 0; }`,
+    `.df-grid { display: grid; gap: var(--df-pdf-space-md); }`,
+    `.df-divider { border: 0; border-top: var(--df-pdf-border-width) var(--df-pdf-border-style) var(--df-pdf-color-border); margin: var(--df-pdf-space-md) 0; }`,
+    `.df-page-break-before, [data-df-primitive='page-break'], [data-df-primitive='page-break-before'] { break-before: page; page-break-before: always; }`,
+    `.df-page-break-after, [data-df-primitive='page-break-after'] { break-after: page; page-break-after: always; }`,
+    `.df-keep-with-next, [data-df-primitive='keep-with-next'] { break-after: avoid-page; page-break-after: avoid; }`,
+    `.df-keep-together, [data-df-primitive='keep-together'] { break-inside: avoid-page; page-break-inside: avoid; }`,
+    `.df-avoid-break, .df-avoid-break-inside, [data-df-primitive='avoid-break-inside'] { break-inside: avoid-page; page-break-inside: avoid; }`,
+    `.df-start-on-left-page, [data-df-primitive='start-on-left-page'] { break-before: left; page-break-before: left; }`,
+    `.df-start-on-right-page, [data-df-primitive='start-on-right-page'] { break-before: right; page-break-before: right; }`,
+    `.df-start-on-recto, [data-df-primitive='start-on-recto'] { break-before: recto; page-break-before: always; }`,
+    `.df-start-on-verso, [data-df-primitive='start-on-verso'] { break-before: verso; page-break-before: always; }`,
+    `.df-page-group, [data-df-primitive='page-group'] { break-before: page; page-break-before: always; }`,
+    `.df-toc, [data-df-primitive='table-of-contents'] { margin-bottom: var(--df-pdf-space-xl); padding: var(--df-pdf-space-lg); border: var(--df-pdf-border-width) var(--df-pdf-border-style) color-mix(in oklab, var(--df-pdf-color-border) 90%, transparent); border-radius: var(--df-pdf-radius-md); background: var(--df-pdf-color-surface-alt); }`,
+    `.df-toc h2, .df-toc-title { margin: 0 0 var(--df-pdf-space-sm); font-size: calc(var(--df-pdf-font-size) + 2px); color: var(--df-pdf-color-text); }`,
+    `.df-toc ol, .df-toc-list { margin: 0; padding: 0 0 0 var(--df-pdf-space-lg); }`,
+    `.df-toc-item { margin: var(--df-pdf-space-xs) 0; }`,
     `.df-toc-item a { color: inherit; text-decoration: none; }`,
+    `.df-table { width: 100%; border-collapse: collapse; }`,
+    `.df-table-header-cell, .df-table-cell { border-bottom: var(--df-pdf-border-width) var(--df-pdf-border-style) var(--df-pdf-color-border); padding: var(--df-pdf-space-sm); }`,
+    `.df-table-cell-numeric { text-align: right; }`,
+    `.df-running-header, .df-running-footer { width: 100%; color: var(--df-pdf-color-muted); font-size: 9px; }`,
+    `.df-token { color: inherit; }`,
+    `.df-background-layer { position: fixed; inset: 0; pointer-events: none; z-index: 9991; }`,
+    `.df-pagination-layer { position: fixed; left: 0; right: 0; bottom: 0; pointer-events: none; z-index: 9998; }`,
     `.df-watermark-layer { position: fixed; inset: 0; pointer-events: none; display: flex; align-items: center; justify-content: center; z-index: 9999; }`,
-    `.df-pagination-layer { position: fixed; left: 0; right: 0; bottom: 0; pointer-events: none; z-index: 9998; }`
+    `.df-foreground-layer { position: fixed; inset: 0; pointer-events: none; z-index: 10000; }`,
+    `.${PDF_ONLY_CLASS}, [data-df-primitive='pdf-only'] { display: initial; }`,
+    `.${PDF_PREVIEW_ONLY_CLASS}, [data-df-primitive='preview-only'] { display: initial; }`,
+    `@media print { .${PDF_PREVIEW_ONLY_CLASS}, [data-df-primitive='preview-only'] { display: none !important; } }`,
+    `@media screen { .${PDF_ONLY_CLASS}, [data-df-primitive='pdf-only'] { display: none !important; } }`,
+    `.df-debug-bounds { outline: 1px dashed #ef4444; }`,
+    `.df-debug-flow { outline: 1px dashed #14b8a6; }`,
+    `.df-overflow-guard { overflow: hidden; }`,
+    `.df-orphan-widow-guard { orphans: 2; widows: 2; }`
   ];
 
   const page = features.page;
@@ -360,8 +486,12 @@ export const pdfFeaturePlugin: PdfFeaturePlugin = {
     const styles = buildFeatureStyles(context.resolvedFeatures);
     context.html = injectStyles(context.html, styles);
     await applyToc(context);
+    await applyBackgroundElement(context);
     await applyPaginationElement(context);
     await applyWatermarkElement(context);
+    await applyForegroundElement(context);
+    await applyBookmarksElement(context);
+    await applyPageRulesElement(context);
     return context.html;
   },
   async htmlPost(context) {
@@ -377,6 +507,23 @@ export const pdfFeaturePlugin: PdfFeaturePlugin = {
         code: "pagination.mode",
         message:
           "Template requests pagination.mode='pagedjs'. Configure '@dfactory/pdf-feature-pagedjs' in renderer.pdfPlugins for advanced pagination."
+      });
+    }
+
+    const pagedClassUsedWithoutPagedMode = PAGED_MEDIA_ONLY_CLASS_NAMES.find((className) => {
+      return context.html.includes(className);
+    });
+    if (
+      pagedClassUsedWithoutPagedMode &&
+      context.resolvedFeatures.pagination?.mode !== "pagedjs"
+    ) {
+      diagnostics.push({
+        pluginId: "@dfactory/pdf-feature-standard",
+        level: "warn",
+        code: "pagination.paged-only-marker",
+        message:
+          `Detected paged-media marker '${pagedClassUsedWithoutPagedMode}' while pagination.mode is not 'pagedjs'. ` +
+          "Enable '@dfactory/pdf-feature-pagedjs' and set pagination.mode='pagedjs' for full behavior."
       });
     }
     return diagnostics;

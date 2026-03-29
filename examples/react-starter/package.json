@@ -13,6 +13,8 @@
     "@dfactory/core": "workspace:*",
     "@dfactory/framework-react": "workspace:*",
     "@dfactory/module-loader-bundle": "workspace:*",
+    "@dfactory/pdf-primitives-core": "workspace:*",
+    "@dfactory/pdf-primitives-react": "workspace:*",
     "@dfactory/pdf-feature-standard": "workspace:*",
     "@dfactory/template-kit": "workspace:*",
     "react": "^19.1.1",
