@@ -1,0 +1,49 @@
+---
+title: Installation
+description: Install dFactory into an existing project or bootstrap a new setup.
+---
+
+## Install in This Monorepo
+
+```bash
+pnpm install
+```
+
+## Bootstrap in Existing Projects
+
+```bash
+npm create dfactory@latest
+# or
+pnpm create dfactory@latest
+# or
+yarn create dfactory
+```
+
+The initializer detects framework dependencies and configures:
+
+- framework plugin
+- module loader
+- core/template-kit dependencies
+- starter template files
+
+## Runtime Dependencies
+
+dFactory requires Playwright for PDF generation paths. Validate environment:
+
+```bash
+pnpm doctor
+```
+
+## Configuration Entry Points
+
+- React-style config example: `dfactory.config.ts`
+- Vue-style config example: `dfactory.config.vue.ts`
+
+Both configs support:
+
+- template discovery globs
+- plugin registration
+- module loader selection
+- auth mode
+- UI exposure settings
+- renderer and PDF plugin setup

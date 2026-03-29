@@ -5,7 +5,15 @@
       "dependsOn": ["^build"],
       "outputs": ["dist/**", ".dfactory/**"]
     },
+    "docs:build": {
+      "dependsOn": ["^docs:build"],
+      "outputs": ["apps/docs/.next/**", "apps/docs/.source/**"]
+    },
     "dev": {
+      "cache": false,
+      "persistent": true
+    },
+    "docs:dev": {
       "cache": false,
       "persistent": true
     },
@@ -13,8 +21,32 @@
       "dependsOn": ["^lint"],
       "outputs": []
     },
+    "docs:lint": {
+      "dependsOn": ["^docs:lint"],
+      "outputs": []
+    },
     "typecheck": {
       "dependsOn": ["^typecheck"],
+      "outputs": []
+    },
+    "docs:typecheck": {
+      "dependsOn": ["^docs:typecheck"],
+      "outputs": []
+    },
+    "docs:sync-openapi": {
+      "dependsOn": ["^build"],
+      "outputs": ["apps/docs/content/openapi/dfactory.openapi.json"]
+    },
+    "docs:check-openapi-sync": {
+      "outputs": []
+    },
+    "docs:check-links": {
+      "outputs": []
+    },
+    "docs:validate-frontmatter": {
+      "outputs": []
+    },
+    "docs:check-readmes": {
       "outputs": []
     },
     "test": {

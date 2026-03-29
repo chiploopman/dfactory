@@ -1,0 +1,54 @@
+---
+title: CLI
+description: Command reference for development, production serving, indexing, and diagnostics.
+---
+
+dFactory CLI package: `@dfactory/cli`
+
+## `dfactory dev`
+
+Run API + UI in development mode.
+
+```bash
+dfactory dev --config dfactory.config.ts --port 3210 --ui-port 3211 --host 0.0.0.0
+```
+
+## `dfactory build`
+
+Build production UI assets into `.dfactory/ui` (default).
+
+```bash
+dfactory build --ui-out-dir .dfactory/ui
+```
+
+## `dfactory serve`
+
+Serve API and (optionally) static UI in production mode.
+
+```bash
+dfactory serve --config dfactory.config.ts --port 3210 --host 0.0.0.0
+```
+
+## `dfactory index`
+
+Generate a template index JSON snapshot.
+
+```bash
+dfactory index --config dfactory.config.ts --output .dfactory/templates.index.json
+```
+
+## `dfactory doctor`
+
+Run local prerequisite and plugin diagnostics.
+
+```bash
+dfactory doctor --config dfactory.config.ts
+```
+
+Checks include:
+
+- Node.js version
+- template discovery
+- plugin/module-loader resolution
+- PDF feature plugin checks
+- Playwright browser availability

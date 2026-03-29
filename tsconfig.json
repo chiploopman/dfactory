@@ -15,6 +15,7 @@
     { "path": "./packages/server" },
     { "path": "./packages/template-kit" },
     { "path": "./packages/ui" },
+    { "path": "./apps/docs" },
     { "path": "./examples/react-starter" },
     { "path": "./examples/vue-starter" },
     { "path": "./tests" }

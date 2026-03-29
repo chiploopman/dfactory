@@ -1,0 +1,42 @@
+---
+title: Contributing
+description: Contributor workflow for code, docs, validation, and release readiness.
+---
+
+## Local Setup
+
+```bash
+pnpm install
+pnpm dev
+pnpm docs:dev
+```
+
+## Required Validation Before Merge
+
+```bash
+pnpm lint
+pnpm typecheck
+pnpm test
+pnpm test:e2e
+pnpm docs:ci
+```
+
+## Documentation Standards
+
+- Use plain, direct language.
+- Include copy-ready commands.
+- Add troubleshooting notes for operationally risky changes.
+- Keep examples executable and minimally complete.
+
+## Writing Conventions
+
+- One canonical page per concern.
+- Prefer links over duplicate explanations.
+- Keep headings stable to minimize broken anchors.
+- Use fenced code blocks with language hints.
+
+## Snippet Policy
+
+- Keep snippets runnable when possible.
+- Avoid pseudocode in command sections.
+- Show safe defaults first, advanced flags second.

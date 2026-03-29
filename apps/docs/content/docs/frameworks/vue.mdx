@@ -1,0 +1,40 @@
+---
+title: "Frameworks: Vue"
+description: Configure and author Vue templates in dFactory.
+---
+
+Vue adapter package: `@dfactory/framework-vue`
+
+## Plugin + Loader Pairing
+
+Use:
+
+- plugin: `@dfactory/framework-vue`
+- module loader: `@dfactory/module-loader-vite`
+
+```ts
+plugins: ["@dfactory/framework-vue"],
+moduleLoader: "@dfactory/module-loader-vite",
+```
+
+## Template Entrypoint
+
+`src/templates/<id>/template.ts`
+
+Vue SFC components can be composed from local `.vue` files.
+
+## Render Contract
+
+Vue templates can return:
+
+- VNodes
+- components
+- primitive values (normalized into document output)
+
+The Vue adapter uses SSR rendering and transform config to support SFC workflows.
+
+## Best Practices
+
+- Keep `template.ts` as orchestration layer.
+- Co-locate element components under `components/`.
+- Keep prop/type contracts explicit (`types.ts`).

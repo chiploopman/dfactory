@@ -1,0 +1,66 @@
+---
+title: Template Authoring
+description: Author robust, typed templates with examples, PDF features, and first-class elements.
+---
+
+Recommended API: `defineTemplate` from `@dfactory/template-kit`.
+
+## Minimal Example
+
+```ts
+import { z } from "zod";
+import { defineTemplate } from "@dfactory/template-kit";
+
+const template = defineTemplate({
+  meta: {
+    id: "invoice",
+    title: "Invoice",
+    framework: "react",
+    version: "1.0.0",
+  },
+  schema: z.object({
+    customerName: z.string(),
+  }),
+  examples: [
+    {
+      name: "default",
+      payload: { customerName: "Acme Corp" },
+    },
+  ],
+  render(payload) {
+    return `<main>Hello ${payload.customerName}</main>`;
+  },
+});
+
+export const meta = template.meta;
+export const schema = template.schema;
+export const examples = template.examples;
+export const render = template.render;
+```
+
+## First-Class PDF Elements
+
+`pdfElements` supports:
+
+- `toc`
+- `header`
+- `footer`
+- `watermark`
+- `pagination`
+
+Each element may provide `render(context)` and/or `template` string fallback.
+
+## Payload Safety
+
+- Keep schemas strict and additive.
+- Ship at least one representative `examples` entry.
+- Avoid hidden shape assumptions in `render`.
+
+## Recommended Layout
+
+```txt
+src/templates/<template-id>/
+  template.tsx | template.ts
+  components/
+  assets/
+```

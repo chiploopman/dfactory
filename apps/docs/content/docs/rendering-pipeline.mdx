@@ -1,0 +1,30 @@
+---
+title: Rendering Pipeline
+description: Understand the end-to-end HTML/PDF pipeline and extension points.
+---
+
+## Pipeline Steps
+
+1. Discover template modules from configured globs.
+2. Resolve framework plugin + module loader.
+3. Validate payload against template schema.
+4. Render framework output to HTML.
+5. Resolve PDF feature config (template + overrides).
+6. Execute PDF feature hooks (`htmlPre`, `htmlPost`, `pdfPost`, diagnostics).
+7. Return HTML preview or PDF binary.
+
+## Feature Hook Order
+
+The renderer executes plugin hooks in deterministic order using configured plugin list.
+
+## Preflight
+
+`POST /api/document/preflight` runs validation and diagnostics without emitting final PDF bytes.
+
+Use it to fail-fast CI and authoring loops.
+
+## Plugin Boundaries
+
+- Keep framework behavior in framework adapters.
+- Keep document-processing behavior in PDF feature plugins.
+- Keep orchestration in `@dfactory/core`.

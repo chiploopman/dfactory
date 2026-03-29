@@ -1,0 +1,49 @@
+---
+title: Deployment
+description: Production deployment guidance for runtime services and docs app.
+---
+
+## Runtime Service Deployment
+
+dFactory runtime supports container + Kubernetes deployment patterns.
+
+### Build
+
+```bash
+docker build -t <registry>/dfactory:<tag> .
+docker push <registry>/dfactory:<tag>
+```
+
+### Kubernetes
+
+Use provided manifests:
+
+- `deploy/k8s/*`
+- `deploy/helm/dfactory/*`
+
+Validate:
+
+- `/api/health`
+- `/api/ready`
+
+## Official Docs App Deployment (Vercel)
+
+Deploy `apps/docs` as a separate project.
+
+### Recommended Vercel Settings
+
+- Root directory: `apps/docs`
+- Install command: `pnpm install`
+- Build command: `pnpm --filter @dfactory/docs build`
+- Output: Next.js default
+
+### Production + Preview
+
+- Enable preview deployments for all pull requests.
+- Protect production branch and require docs checks before merge.
+
+### Rollback Runbook
+
+1. Re-deploy previous successful Vercel deployment.
+2. Revert problematic docs commit in repository.
+3. Re-run `pnpm docs:ci` before re-promoting.

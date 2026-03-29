@@ -1,0 +1,41 @@
+---
+title: Troubleshooting
+description: Diagnose common runtime, rendering, and docs-app issues.
+---
+
+## PDF Generation Fails
+
+- Run `pnpm doctor`.
+- Ensure Playwright browser is installed/available.
+- Inspect renderer timeout and pool settings in config.
+
+## Templates Not Found
+
+- Verify `templates.globs` in config.
+- Confirm files are under expected framework path.
+- Trigger refresh endpoint in development:
+
+```bash
+curl -X POST http://127.0.0.1:3210/api/templates/refresh
+```
+
+## Vue Templates Not Loading
+
+- Ensure Vue plugin + Vite module loader pairing.
+- Verify SFC dependencies in workspace lockfile.
+
+## Docs App Build Errors
+
+- Re-run source generation: `pnpm --filter @dfactory/docs postinstall`
+- Ensure `source.config.ts` exists at docs app root.
+- Run `pnpm --filter @dfactory/docs typecheck`.
+
+## Link/README Validation Failures
+
+Run:
+
+```bash
+pnpm docs:check-links
+pnpm docs:check-readmes
+pnpm docs:validate-frontmatter
+```

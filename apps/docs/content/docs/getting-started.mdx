@@ -1,0 +1,44 @@
+---
+title: Getting Started
+description: Run dFactory locally and validate a full preview-to-generate workflow in minutes.
+---
+
+## Prerequisites
+
+- Node.js 20+
+- pnpm 10+
+- Playwright Chromium dependencies (for PDF rendering)
+
+## Quick Start
+
+```bash
+pnpm install
+pnpm dev
+```
+
+By default:
+
+- API: `http://127.0.0.1:3210`
+- UI: `http://127.0.0.1:3211`
+
+## First Workflow
+
+1. Open UI at `http://127.0.0.1:3211`.
+2. Pick `invoice` or `invoice-reference` template.
+3. Edit payload in the bottom panel.
+4. Click `Preview` in HTML mode.
+5. Switch to PDF mode and click `Preview` again.
+6. Click `Generate` to produce a downloadable document.
+
+## Health and Readiness
+
+```bash
+curl http://127.0.0.1:3210/api/health
+curl http://127.0.0.1:3210/api/ready
+```
+
+## Common First-Time Issues
+
+- Empty PDF output: run `pnpm doctor` and confirm Playwright browser availability.
+- No templates found: verify template globs in `dfactory.config.ts`.
+- UI not loading: ensure API/UI ports are not occupied by other services.

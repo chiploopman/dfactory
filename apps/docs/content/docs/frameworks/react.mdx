@@ -1,0 +1,38 @@
+---
+title: "Frameworks: React"
+description: Configure and author React templates in dFactory.
+---
+
+React adapter package: `@dfactory/framework-react`
+
+## Plugin + Loader Pairing
+
+Use:
+
+- plugin: `@dfactory/framework-react`
+- module loader: `@dfactory/module-loader-bundle`
+
+```ts
+plugins: ["@dfactory/framework-react"],
+moduleLoader: "@dfactory/module-loader-bundle",
+```
+
+## Template Entrypoint
+
+`src/templates/<id>/template.tsx`
+
+## Render Contract
+
+React templates can return:
+
+- JSX elements
+- strings/numbers
+- components that can be rendered to static markup
+
+The adapter normalizes output to HTML document shell before renderer pipeline.
+
+## Best Practices
+
+- Keep presentation logic in local `components/` files.
+- Keep payload shaping in schema layer, not render body.
+- Use `examples` for regression-safe preview workflows.

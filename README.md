@@ -1,39 +1,83 @@
 # DFactory
 
-DFactory is a Storybook-inspired platform for designing, previewing, cataloging, and generating PDF documents from code templates.
+Storybook-inspired PDF template catalog, preview, and generation platform for React and Vue ecosystems.
 
-Currently supported template frameworks: React and Vue.
+## Purpose
 
-Framework runtime wiring is plugin-based (`config.plugins`) with explicit or auto-selected module loaders (`config.moduleLoader`).
+DFactory provides a production-ready workflow for:
 
-Starter projects include:
+- discovering templates from source code
+- validating payloads with schemas
+- previewing in HTML/PDF
+- generating documents through a plugin-extensible rendering pipeline
 
-- `invoice` (simple quick-start template)
-- `invoice-reference` (advanced multi-file reference with first-class TOC/header/footer/watermark/pagination elements)
+It is designed for both product teams shipping document workflows and contributors building framework/runtime extensions.
 
-## Quick start
+## Usage
+
+### Quick Start (Monorepo)
 
 ```bash
 pnpm install
 pnpm dev
 ```
 
-## Core commands
+Default endpoints:
 
-- `pnpm dev` - start API + UI in development mode.
-- `pnpm build` - build all packages.
-- `pnpm serve` - run production server.
-- `pnpm index` - emit template index JSON.
-- `pnpm run doctor` - validate local runtime prerequisites.
-- `pnpm test` - run unit/integration test suites.
-- `pnpm test:e2e` - run Playwright E2E tests.
+- API: `http://127.0.0.1:3210`
+- UI: `http://127.0.0.1:3211`
 
-## Install into existing projects
+### Core Commands
 
 ```bash
-npm create dfactory@latest
-# or
-pnpm create dfactory@latest
-# or
-yarn create dfactory
+pnpm dev
+pnpm build
+pnpm serve
+pnpm index
+pnpm doctor
+pnpm test
+pnpm test:e2e
 ```
+
+### Official Docs App
+
+```bash
+pnpm docs:dev
+```
+
+Docs app default URL: `http://127.0.0.1:3333/docs`
+
+## Development
+
+### Required Validation Before Merge
+
+```bash
+pnpm lint
+pnpm typecheck
+pnpm test
+pnpm test:e2e
+pnpm docs:ci
+```
+
+### Docs Maintenance Commands
+
+```bash
+pnpm docs:sync-openapi
+pnpm docs:check-links
+pnpm docs:validate-frontmatter
+pnpm docs:check-readmes
+```
+
+## Troubleshooting
+
+- Templates not loading: validate `templates.globs` in `dfactory.config.ts`.
+- PDF preview/generation fails: run `pnpm doctor` and verify Playwright availability.
+- UI/API port conflicts: free ports `3210` and `3211`, then restart dev.
+- Docs build errors: run `pnpm --filter @dfactory/docs typecheck` and regenerate `.source` via docs postinstall.
+
+## Related Documentation
+
+- Official docs site: [/docs](/docs)
+- Docs app package: [apps/docs/README.md](./apps/docs/README.md)
+- Architecture guardrails: [docs/architecture-guardrails.md](./docs/architecture-guardrails.md)
+- Deployment manifests: `deploy/`

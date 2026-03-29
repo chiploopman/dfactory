@@ -1,0 +1,28 @@
+---
+title: Best Practices
+description: Recommended patterns for template quality, performance, and maintainability.
+---
+
+## Template Quality
+
+- Keep payload schemas strict and explicit.
+- Include real-world examples with edge-case values.
+- Avoid side effects inside `render`.
+
+## Performance
+
+- Keep asset sizes under configured limits.
+- Use feature hooks intentionally; avoid duplicate transformations.
+- Tune renderer pool size to workload profile.
+
+## Reliability
+
+- Gate generate flows with preflight.
+- Keep API and docs snapshot in sync.
+- Preserve deterministic template IDs and examples.
+
+## Contributor Workflow
+
+- Update docs in same PR as behavior changes.
+- Add/refresh package README when public behavior changes.
+- Run docs checks and main test suite before merge.

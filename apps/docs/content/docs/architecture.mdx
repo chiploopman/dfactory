@@ -1,0 +1,32 @@
+---
+title: Architecture
+description: High-level architecture and boundaries across core, adapters, loaders, renderer, server, and UI.
+---
+
+## Runtime Composition
+
+dFactory is composed of:
+
+- `@dfactory/core` for orchestration and template registry
+- framework adapters (`@dfactory/framework-react`, `@dfactory/framework-vue`)
+- module loaders (`bundle` and `vite`)
+- renderer (`@dfactory/renderer-playwright`)
+- server (`@dfactory/server`)
+- manager UI (`@dfactory/ui`)
+
+## Dependency Guardrails
+
+- Core remains framework-agnostic.
+- Server must not hardcode framework behavior.
+- Feature behavior belongs in PDF plugin packages.
+
+## Operational Modes
+
+- Development: API + Vite UI split ports.
+- Production: API service optionally serving built UI assets.
+
+## Extensibility
+
+- Framework plugin contract for new template runtimes.
+- Module loader abstraction for transform/no-transform pipelines.
+- PDF feature plugin hooks for HTML/PDF processing stages.
