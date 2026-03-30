@@ -362,7 +362,7 @@ export function InspectorCodeExplorer({
                 </div>
               </ResizablePanel>
               <ResizableHandle
-                className="source-explorer-resize-handle relative -ml-px w-3 bg-transparent p-0 after:absolute after:top-1/2 after:left-0 after:h-8 after:w-[6px] after:-translate-x-1/2 after:-translate-y-1/2 after:rounded-full after:bg-border after:transition-all after:hover:h-10"
+                className="source-explorer-resize-handle relative w-0 bg-transparent p-0 after:absolute after:top-1/2 after:left-0 after:h-8 after:w-[6px] after:-translate-x-1/2 after:-translate-y-1/2 after:rounded-full after:bg-border after:transition-all hover:after:h-10"
                 data-testid={`${testIdPrefix}-explorer-resize-handle`}
               />
               <ResizablePanel

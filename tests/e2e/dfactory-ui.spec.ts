@@ -523,34 +523,52 @@ test("dev mode: catalog, payload edit, html/pdf preview, generate, dock panel be
   await expect(page.getByTestId("source-explorer-list")).toBeVisible();
   await expect(page.getByTestId("source-explorer-file").first()).toBeVisible();
   const sourceResizeHandle = page.locator(".source-explorer-resize-handle").first();
-  await expect(sourceResizeHandle).toBeVisible();
+  await expect(sourceResizeHandle).toHaveCount(1);
   const sourceNavBefore = await page.getByTestId("source-explorer-nav").boundingBox();
-  const sourceHandleBounds = await sourceResizeHandle.boundingBox();
+  const sourceViewerBefore = await page.getByTestId("source-viewer").boundingBox();
   const sourceExplorerBounds = await page.getByTestId("source-explorer").boundingBox();
   expect(sourceNavBefore).toBeTruthy();
-  expect(sourceHandleBounds).toBeTruthy();
+  expect(sourceViewerBefore).toBeTruthy();
   expect(sourceExplorerBounds).toBeTruthy();
+  const sourceNavDividerStyle = await page.getByTestId("source-explorer-nav").evaluate((element) => {
+    const style = getComputedStyle(element);
+    return {
+      borderRightStyle: style.borderRightStyle,
+      borderRightWidth: style.borderRightWidth,
+      borderRightColor: style.borderRightColor,
+    };
+  });
+  expect(sourceNavDividerStyle.borderRightStyle).not.toBe("none");
+  expect(parseFloat(sourceNavDividerStyle.borderRightWidth)).toBeGreaterThan(0);
+  expect(sourceNavDividerStyle.borderRightColor).not.toBe("rgba(0, 0, 0, 0)");
+  expect(sourceNavDividerStyle.borderRightColor).not.toBe("transparent");
+  const sourcePaneGapBefore =
+    (sourceViewerBefore?.x ?? 0) - ((sourceNavBefore?.x ?? 0) + (sourceNavBefore?.width ?? 0));
+  expect(Math.abs(sourcePaneGapBefore)).toBeLessThanOrEqual(2);
   const initialSourceNavRatio =
     (sourceNavBefore?.width ?? 0) / (sourceExplorerBounds?.width ?? 1);
   expect(initialSourceNavRatio).toBeGreaterThan(0.17);
   expect(initialSourceNavRatio).toBeLessThanOrEqual(0.42);
-  const sourceHandleCenterX = (sourceHandleBounds?.x ?? 0) + (sourceHandleBounds?.width ?? 0) / 2;
-  const sourceHandleCenterY = (sourceHandleBounds?.y ?? 0) + (sourceHandleBounds?.height ?? 0) / 2;
+  const sourceHandleCenterX = (sourceNavBefore?.x ?? 0) + (sourceNavBefore?.width ?? 0);
+  const sourceHandleCenterY = (sourceNavBefore?.y ?? 0) + (sourceNavBefore?.height ?? 0) / 2;
   await page.mouse.move(sourceHandleCenterX, sourceHandleCenterY);
   await page.mouse.down();
   await page.mouse.move(sourceHandleCenterX + 180, sourceHandleCenterY, { steps: 16 });
   await page.mouse.up();
   const sourceNavAfter = await page.getByTestId("source-explorer-nav").boundingBox();
+  const sourceViewerAfter = await page.getByTestId("source-viewer").boundingBox();
   expect(sourceNavAfter).toBeTruthy();
+  expect(sourceViewerAfter).toBeTruthy();
+  const sourcePaneGapAfter =
+    (sourceViewerAfter?.x ?? 0) - ((sourceNavAfter?.x ?? 0) + (sourceNavAfter?.width ?? 0));
+  expect(Math.abs(sourcePaneGapAfter)).toBeLessThanOrEqual(2);
   const sourceResizeDelta = Math.abs((sourceNavAfter?.width ?? 0) - (sourceNavBefore?.width ?? 0));
   expect(sourceResizeDelta).toBeGreaterThan(6);
   expect((sourceNavAfter?.width ?? 0)).toBeLessThanOrEqual((sourceExplorerBounds?.width ?? 0) * 0.42);
-  const sourceHandleAfterBounds = await sourceResizeHandle.boundingBox();
-  expect(sourceHandleAfterBounds).toBeTruthy();
   const sourceHandleAfterCenterX =
-    (sourceHandleAfterBounds?.x ?? 0) + (sourceHandleAfterBounds?.width ?? 0) / 2;
+    (sourceNavAfter?.x ?? 0) + (sourceNavAfter?.width ?? 0);
   const sourceHandleAfterCenterY =
-    (sourceHandleAfterBounds?.y ?? 0) + (sourceHandleAfterBounds?.height ?? 0) / 2;
+    (sourceNavAfter?.y ?? 0) + (sourceNavAfter?.height ?? 0) / 2;
   await page.mouse.move(sourceHandleAfterCenterX, sourceHandleAfterCenterY);
   await page.mouse.down();
   await page.mouse.move((sourceExplorerBounds?.x ?? 0) + (sourceExplorerBounds?.width ?? 0) + 200, sourceHandleAfterCenterY, {
