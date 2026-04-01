@@ -1,12 +1,25 @@
 {
   "name": "@dfactory/core",
   "version": "0.1.0",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/chiploopman/dfactory.git"
+  },
+  "homepage": "https://github.com/chiploopman/dfactory#readme",
+  "bugs": {
+    "url": "https://github.com/chiploopman/dfactory/issues"
+  },
+  "keywords": ["dfactory", "pdf", "templates"],
+  "engines": {
+    "node": ">=20"
+  },
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "exports": {
     ".": {
-      "types": "./src/index.ts",
+      "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
     }
   },
@@ -14,10 +27,13 @@
     "dist",
     "src"
   ],
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "build": "tsup src/index.ts --format esm --dts",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "lint": "eslint src --ext .ts",
+    "lint": "eslint .",
     "test": "vitest run --passWithNoTests",
     "clean": "rm -rf dist"
   },

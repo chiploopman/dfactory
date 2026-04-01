@@ -1,4 +1,4 @@
-FROM node:22-alpine AS base
+FROM node:20-alpine AS base
 WORKDIR /app
 RUN corepack enable
 
@@ -9,8 +9,7 @@ COPY examples ./examples
 RUN pnpm install --no-frozen-lockfile
 
 FROM deps AS build
-RUN pnpm build
-RUN pnpm --filter @dfactory/cli build
+RUN pnpm build:runtime
 RUN node packages/cli/dist/index.js build --ui-out-dir /app/.dfactory/ui
 
 FROM base AS runtime

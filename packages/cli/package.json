@@ -1,6 +1,19 @@
 {
   "name": "@dfactory/cli",
   "version": "0.1.0",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/chiploopman/dfactory.git"
+  },
+  "homepage": "https://github.com/chiploopman/dfactory#readme",
+  "bugs": {
+    "url": "https://github.com/chiploopman/dfactory/issues"
+  },
+  "keywords": ["dfactory", "pdf", "templates", "cli"],
+  "engines": {
+    "node": ">=20"
+  },
   "type": "module",
   "bin": {
     "dfactory": "dist/index.js"
@@ -16,11 +29,14 @@
   "files": [
     "dist"
   ],
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "build": "tsup src/index.ts --format esm --dts",
     "dev": "tsx src/index.ts dev",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "lint": "eslint src --ext .ts",
+    "lint": "eslint .",
     "test": "vitest run --passWithNoTests",
     "clean": "rm -rf dist",
     "serve": "tsx src/index.ts serve",

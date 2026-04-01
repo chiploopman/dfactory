@@ -1,0 +1,40 @@
+{
+  "$schema": "https://unpkg.com/@changesets/config@3.0.4/schema.json",
+  "changelog": [
+    "@changesets/changelog-github",
+    {
+      "repo": "chiploopman/dfactory"
+    }
+  ],
+  "commit": false,
+  "fixed": [
+    [
+      "@dfactory/cli",
+      "@dfactory/core",
+      "@dfactory/framework-react",
+      "@dfactory/framework-vue",
+      "@dfactory/module-loader-bundle",
+      "@dfactory/module-loader-vite",
+      "@dfactory/pdf-feature-pagedjs",
+      "@dfactory/pdf-feature-pdf-lib",
+      "@dfactory/pdf-feature-standard",
+      "@dfactory/pdf-primitives-core",
+      "@dfactory/pdf-primitives-react",
+      "@dfactory/pdf-primitives-vue",
+      "@dfactory/renderer-playwright",
+      "@dfactory/server",
+      "@dfactory/template-kit",
+      "@dfactory/ui",
+      "create-dfactory"
+    ]
+  ],
+  "linked": [],
+  "access": "public",
+  "baseBranch": "main",
+  "updateInternalDependencies": "patch",
+  "ignore": [
+    "@dfactory/docs",
+    "@dfactory/example-react-starter",
+    "@dfactory/example-vue-starter"
+  ]
+}

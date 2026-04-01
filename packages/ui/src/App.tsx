@@ -240,48 +240,21 @@ export default function App() {
     return panelTabs.find((tab) => tab.id === activePanelTab) ?? panelTabs[0]
   }, [panelTabs, activePanelTab])
 
-  async function loadTemplates() {
-    const [runtimeConfig, templateList] = await Promise.all([
-      fetchRuntime(),
-      fetchTemplates(),
-    ])
-
-    setRuntime(runtimeConfig)
-    setTemplates(templateList)
-
-    if (templateList.length > 0 && !selectedId) {
-      setSelectedId(templateList[0].id)
-    }
-  }
-
-  async function loadTemplateAssets(templateId: string) {
-    const [schema, features] = await Promise.all([
-      fetchTemplateSchema(templateId),
-      fetchTemplateFeatures(templateId),
-    ])
-    setSchemaJson(pretty(schema))
-    setFeaturesJson(pretty(features.features))
-
-    if (features.examples.length > 0) {
-      setPayloadText(pretty(features.examples[0].payload))
-    }
-
-    if (sourceEnabled) {
-      try {
-        const source = await fetchTemplateSource(templateId)
-        setSourceManifest(source)
-        setActiveSourceFilePath(resolveInitialSourceFilePath(source))
-      } catch {
-        setSourceManifest(undefined)
-        setActiveSourceFilePath(undefined)
-      }
-    } else {
-      setSourceManifest(undefined)
-      setActiveSourceFilePath(undefined)
-    }
-  }
-
   useEffect(() => {
+    async function loadTemplates() {
+      const [runtimeConfig, templateList] = await Promise.all([
+        fetchRuntime(),
+        fetchTemplates(),
+      ])
+
+      setRuntime(runtimeConfig)
+      setTemplates(templateList)
+
+      if (templateList.length > 0) {
+        setSelectedId((currentId) => currentId ?? templateList[0].id)
+      }
+    }
+
     loadTemplates().catch((loadError) => {
       setError(
         loadError instanceof Error
@@ -296,7 +269,36 @@ export default function App() {
       return
     }
 
-    loadTemplateAssets(selectedId).catch((loadError) => {
+    const templateId = selectedId
+
+    async function loadTemplateAssets() {
+      const [schema, features] = await Promise.all([
+        fetchTemplateSchema(templateId),
+        fetchTemplateFeatures(templateId),
+      ])
+      setSchemaJson(pretty(schema))
+      setFeaturesJson(pretty(features.features))
+
+      if (features.examples.length > 0) {
+        setPayloadText(pretty(features.examples[0].payload))
+      }
+
+      if (sourceEnabled) {
+        try {
+          const source = await fetchTemplateSource(templateId)
+          setSourceManifest(source)
+          setActiveSourceFilePath(resolveInitialSourceFilePath(source))
+        } catch {
+          setSourceManifest(undefined)
+          setActiveSourceFilePath(undefined)
+        }
+      } else {
+        setSourceManifest(undefined)
+        setActiveSourceFilePath(undefined)
+      }
+    }
+
+    loadTemplateAssets().catch((loadError) => {
       setError(
         loadError instanceof Error
           ? loadError.message

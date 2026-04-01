@@ -1,7 +1,19 @@
 {
   "name": "@dfactory/ui",
   "version": "0.1.0",
-  "private": true,
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/chiploopman/dfactory.git"
+  },
+  "homepage": "https://github.com/chiploopman/dfactory#readme",
+  "bugs": {
+    "url": "https://github.com/chiploopman/dfactory/issues"
+  },
+  "keywords": ["dfactory", "pdf", "templates", "ui"],
+  "engines": {
+    "node": ">=20"
+  },
   "type": "module",
   "main": "dist/index.html",
   "exports": {
@@ -19,12 +31,15 @@
     "vite.config.ts",
     "components.json"
   ],
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "lint": "eslint src --ext .ts,.tsx",
+    "lint": "eslint .",
     "test": "vitest run --passWithNoTests",
     "clean": "rm -rf dist"
   },

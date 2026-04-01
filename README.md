@@ -18,6 +18,7 @@ It is designed for both product teams shipping document workflows and contributo
 ### Quick Start (Monorepo)
 
 ```bash
+nvm use
 pnpm install
 pnpm dev
 ```
@@ -32,6 +33,7 @@ Default endpoints:
 ```bash
 pnpm dev
 pnpm build
+pnpm build:runtime
 pnpm serve
 pnpm index
 pnpm doctor
@@ -68,12 +70,25 @@ pnpm docs:validate-frontmatter
 pnpm docs:check-readmes
 ```
 
+### Releases
+
+Published package changes should include a changeset:
+
+```bash
+pnpm changeset
+```
+
+Additional maintainer docs:
+
+- Contribution guide: [CONTRIBUTING.md](./CONTRIBUTING.md)
+- GitHub and release setup: [.github/REPO_SETUP.md](./.github/REPO_SETUP.md)
+
 ## Troubleshooting
 
 - Templates not loading: validate `templates.globs` in `dfactory.config.ts`.
 - PDF preview/generation fails: run `pnpm doctor` and verify Playwright availability.
 - UI/API port conflicts: free ports `3210` and `3211`, then restart dev.
-- Docs build errors: run `pnpm --filter @dfactory/docs typecheck` and regenerate `.source` via docs postinstall.
+- Docs build errors: use Node `20` via `.nvmrc`, run `pnpm --filter @dfactory/docs typecheck`, and regenerate `.source` via docs postinstall.
 
 ## Related Documentation
 

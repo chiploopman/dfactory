@@ -1,5 +1,4 @@
 node_modules
-pnpm-lock.yaml
 *.log
 dist
 .DS_Store
@@ -9,6 +8,7 @@ coverage
 playwright-report
 test-results
 .dfactory
+.release-pack
 .turbo
 apps/docs/.next
 apps/docs/.source
