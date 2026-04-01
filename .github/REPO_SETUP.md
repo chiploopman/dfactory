@@ -7,6 +7,8 @@ This repository uses two release paths:
 
 The bootstrap workflow uses a temporary npm token only once. The long-term workflow uses npm trusted publishing with GitHub OIDC and does not require a long-lived npm token.
 
+The pnpm version for this repository is pinned in [`package.json`](../package.json) via `packageManager`. GitHub workflows intentionally do not pass a separate `version` input to `pnpm/action-setup`, so Actions uses the repo-pinned pnpm version instead of a second workflow-local pin.
+
 ## Before You Start
 
 Make sure all of the following are true before you try to publish anything:
