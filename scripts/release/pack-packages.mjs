@@ -15,6 +15,15 @@ function isAllowedLibraryPackageFile(filePath) {
   );
 }
 
+function isAllowedCliFile(filePath) {
+  return (
+    archiveDocFiles.has(filePath) ||
+    filePath === "bin/dfactory.js" ||
+    filePath === "dist/index.js" ||
+    filePath === "dist/index.d.ts"
+  );
+}
+
 function isAllowedUiFile(filePath) {
   return (
     archiveDocFiles.has(filePath) ||
@@ -39,6 +48,10 @@ function isAllowedCreateDFactoryFile(filePath) {
 }
 
 function getAllowedFileMatcher(packageName) {
+  if (packageName === "@dfactory/cli") {
+    return isAllowedCliFile;
+  }
+
   if (packageName === "@dfactory/ui") {
     return isAllowedUiFile;
   }
@@ -51,6 +64,10 @@ function getAllowedFileMatcher(packageName) {
 }
 
 function getRequiredFiles(packageName) {
+  if (packageName === "@dfactory/cli") {
+    return ["bin/dfactory.js", "dist/index.js", "dist/index.d.ts"];
+  }
+
   if (packageName === "@dfactory/ui") {
     return ["dist/index.html", "index.html", "node/index.js", "node/index.d.ts", "vite.config.ts"];
   }

@@ -54,6 +54,7 @@
     "test": "pnpm test:repo && pnpm test:packages",
     "test:licenses": "vitest run tests/unit/pdf-feature-license-policy.test.ts",
     "test:e2e": "pnpm build:examples && playwright test",
+    "verify:clean-room": "node scripts/ci/verify-clean-room.mjs",
     "release:check-governance": "node scripts/release/check-publish-governance.mjs",
     "release:status": "changeset status --verbose",
     "release:version": "changeset version && pnpm install --no-frozen-lockfile",

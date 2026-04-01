@@ -16,7 +16,7 @@
   },
   "type": "module",
   "bin": {
-    "dfactory": "dist/index.js"
+    "dfactory": "bin/dfactory.js"
   },
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -27,6 +27,7 @@
     }
   },
   "files": [
+    "bin",
     "dist"
   ],
   "publishConfig": {

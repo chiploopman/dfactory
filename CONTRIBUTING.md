@@ -28,6 +28,14 @@ pnpm build:examples
 
 Use `pnpm build` to validate the whole repo, and `pnpm build:examples` to exercise the React and Vue runtime fixtures used by e2e and packaging verification.
 
+The example workspaces are internal runtime fixtures and intentionally use the same `dfactory` CLI contract as published consumers.
+
+If your change touches CI, release, packaging, or runtime-fixture plumbing, also run:
+
+```bash
+pnpm verify:clean-room
+```
+
 ## Changesets
 
 If your pull request changes any published package, add a changeset:

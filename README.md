@@ -43,6 +43,7 @@ pnpm doctor
 pnpm doctor:vue
 pnpm test
 pnpm test:e2e
+pnpm verify:clean-room
 ```
 
 ### Official Docs App
@@ -63,6 +64,14 @@ pnpm typecheck
 pnpm test
 pnpm test:e2e
 pnpm docs:ci
+```
+
+The React and Vue example workspaces are internal runtime fixtures. They intentionally exercise the same `dfactory` CLI contract that published consumers use.
+
+If you change CI, release, packaging, or fixture plumbing, also run:
+
+```bash
+pnpm verify:clean-room
 ```
 
 ### Docs Maintenance Commands
