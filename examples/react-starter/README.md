@@ -10,7 +10,7 @@ React starter showcasing canonical dFactory template structure, including:
 ## Usage
 
 ```bash
-pnpm --filter @dfactory/example-react-starter dfactory:dev
+pnpm --filter @dfactory/example-react-starter dev
 ```
 
 Starter config file: `examples/react-starter/dfactory.config.ts`

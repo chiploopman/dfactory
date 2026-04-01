@@ -4,12 +4,13 @@ import process from "node:process";
 
 import { createDFactoryServer } from "@dfactory/server";
 
-const cwd = process.cwd();
+const repoRoot = process.cwd();
+const docsFixtureDir = path.resolve(repoRoot, "examples/react-starter");
 const outputPath = path.resolve(
-  cwd,
+  repoRoot,
   "apps/docs/content/openapi/dfactory.openapi.json",
 );
-const configPath = path.resolve(cwd, process.env.DFACTORY_DOCS_CONFIG ?? "dfactory.config.ts");
+const configPath = path.resolve(docsFixtureDir, "dfactory.config.ts");
 
 function sortJson(value) {
   if (Array.isArray(value)) {
@@ -28,12 +29,12 @@ function sortJson(value) {
 }
 
 const app = await createDFactoryServer({
-  cwd,
+  cwd: docsFixtureDir,
   configPath,
   port: 0,
   host: "127.0.0.1",
   isProduction: true,
-  uiDistDir: path.resolve(cwd, ".dfactory/ui"),
+  uiDistDir: path.resolve(repoRoot, ".dfactory/ui"),
 });
 
 try {

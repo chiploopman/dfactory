@@ -3,9 +3,12 @@ import os from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
 
-import { releaseOutputDir } from "./published-packages.mjs";
+import { publishedPackages, releaseOutputDir } from "./published-packages.mjs";
 
 const summaryPath = path.resolve(releaseOutputDir, "pack-summary.json");
+const libraryImportTargets = publishedPackages
+  .map((pkg) => pkg.name)
+  .filter((packageName) => !["@dfactory/cli", "@dfactory/ui", "create-dfactory"].includes(packageName));
 
 function run(command, args, options = {}) {
   const { env: extraEnv = {}, ...spawnOptions } = options;
@@ -44,12 +47,17 @@ function getTarballSpec(tarballPath) {
   return `file:${tarballPath}`;
 }
 
+async function writeJson(filePath, value) {
+  await fs.writeFile(filePath, `${JSON.stringify(value, null, 2)}\n`);
+}
+
+async function readJson(filePath) {
+  return JSON.parse(await fs.readFile(filePath, "utf8"));
+}
+
 async function createTempProject(prefix, manifest) {
   const tempDir = await fs.mkdtemp(path.resolve(os.tmpdir(), prefix));
-  await fs.writeFile(
-    path.resolve(tempDir, "package.json"),
-    `${JSON.stringify(manifest, null, 2)}\n`
-  );
+  await writeJson(path.resolve(tempDir, "package.json"), manifest);
   return tempDir;
 }
 
@@ -64,31 +72,47 @@ function createPackageManagerEnv(projectDir) {
   };
 }
 
-async function assertReleaseInstall(projectDir, env) {
-  const coreImport = run(
-    "node",
-    ["--input-type=module", "-e", "import('@dfactory/core').then(() => console.log('core-ok'))"],
-    { cwd: projectDir, env }
-  );
+function createManifest(name, dependencies, tarballSpecs) {
+  return {
+    name,
+    private: true,
+    type: "module",
+    dependencies,
+    overrides: tarballSpecs,
+    pnpm: {
+      overrides: tarballSpecs
+    },
+    resolutions: tarballSpecs
+  };
+}
 
-  if (!coreImport.stdout.includes("core-ok")) {
-    throw new Error("Failed to import @dfactory/core from smoke install.");
-  }
-
-  const uiImport = run(
+async function assertLibraryImports(projectDir, env) {
+  const importCheck = run(
     "node",
     [
       "--input-type=module",
       "-e",
-      "import('@dfactory/ui/node').then((mod) => console.log(typeof mod.buildUiAssets === 'function' ? 'ui-ok' : 'ui-missing'))"
+      `
+const importTargets = ${JSON.stringify(libraryImportTargets)};
+for (const name of importTargets) {
+  await import(name);
+}
+const ui = await import("@dfactory/ui/node");
+if (typeof ui.buildUiAssets !== "function" || typeof ui.startUiDevServer !== "function") {
+  throw new Error("ui-node-missing");
+}
+console.log("imports-ok");
+`
     ],
     { cwd: projectDir, env }
   );
 
-  if (!uiImport.stdout.includes("ui-ok")) {
-    throw new Error("Failed to import @dfactory/ui/node from smoke install.");
+  if (!importCheck.stdout.includes("imports-ok")) {
+    throw new Error("Failed to import all public library packages from smoke install.");
   }
+}
 
+async function assertCliBuild(projectDir, env) {
   run(path.resolve(projectDir, "node_modules/.bin/dfactory"), ["build", "--ui-out-dir", ".dfactory/ui"], {
     cwd: projectDir,
     env
@@ -97,31 +121,146 @@ async function assertReleaseInstall(projectDir, env) {
   await fs.access(path.resolve(projectDir, ".dfactory/ui/index.html"));
 }
 
-const { packed } = await readSummary();
-const tarballSpecs = Object.fromEntries(packed.map((entry) => [entry.name, getTarballSpec(entry.tarballPath)]));
-const representativePackages = ["@dfactory/cli", "@dfactory/core", "@dfactory/ui", "create-dfactory"];
-const representativeDependencies = Object.fromEntries(
-  representativePackages.map((packageName) => {
-    const tarballSpec = tarballSpecs[packageName];
+async function writeTypeScriptConfig(projectDir, framework) {
+  const compilerOptions =
+    framework === "react"
+      ? {
+          jsx: "react-jsx",
+          module: "ESNext",
+          moduleResolution: "Bundler",
+          target: "ES2022"
+        }
+      : {
+          module: "ESNext",
+          moduleResolution: "Bundler",
+          target: "ES2022"
+        };
 
-    if (!tarballSpec) {
-      throw new Error(`Missing representative release tarball for ${packageName}.`);
+  await writeJson(path.resolve(projectDir, "tsconfig.json"), {
+    compilerOptions
+  });
+}
+
+async function pinScaffoldedDependenciesToTarballs(projectDir, tarballSpecs) {
+  const packageJsonPath = path.resolve(projectDir, "package.json");
+  const packageJson = await readJson(packageJsonPath);
+  const dependencies = { ...(packageJson.dependencies ?? {}) };
+
+  for (const [packageName, currentVersion] of Object.entries(dependencies)) {
+    if (typeof currentVersion !== "string") {
+      continue;
     }
 
-    return [packageName, tarballSpec];
-  })
-);
+    const tarballSpec = tarballSpecs[packageName];
+    if (tarballSpec) {
+      dependencies[packageName] = tarballSpec;
+    }
+  }
 
-const baseManifest = {
-  name: "dfactory-release-smoke",
-  private: true,
-  dependencies: representativeDependencies,
-  overrides: tarballSpecs,
-  pnpm: {
-    overrides: tarballSpecs
-  },
-  resolutions: tarballSpecs
-};
+  packageJson.dependencies = dependencies;
+  await writeJson(packageJsonPath, packageJson);
+}
+
+async function assertScaffoldedProject(projectDir, env, expectedTemplateId) {
+  run(path.resolve(projectDir, "node_modules/.bin/dfactory"), ["build", "--ui-out-dir", ".dfactory/ui"], {
+    cwd: projectDir,
+    env
+  });
+  run(path.resolve(projectDir, "node_modules/.bin/dfactory"), ["index"], {
+    cwd: projectDir,
+    env
+  });
+
+  await fs.access(path.resolve(projectDir, ".dfactory/ui/index.html"));
+  const indexRaw = await fs.readFile(path.resolve(projectDir, ".dfactory/templates.index.json"), "utf8");
+  const indexJson = JSON.parse(indexRaw);
+  const templateIds = new Set((indexJson.templates ?? []).map((template) => template.id));
+
+  if (!templateIds.has(expectedTemplateId)) {
+    throw new Error(`Expected scaffolded project to expose template ${expectedTemplateId}.`);
+  }
+}
+
+async function runManagerSmoke(manager, tarballSpecs) {
+  const projectDir = await createTempProject(
+    `dfactory-smoke-${manager.name}-`,
+    createManifest("dfactory-release-smoke", tarballSpecs, tarballSpecs)
+  );
+  const env = createPackageManagerEnv(projectDir);
+  let completed = false;
+
+  try {
+    console.log(`[${manager.name}] installing release tarballs...`);
+    manager.install(projectDir, env);
+    console.log(`[${manager.name}] validating imports...`);
+    await assertLibraryImports(projectDir, env);
+    console.log(`[${manager.name}] running CLI build smoke...`);
+    await assertCliBuild(projectDir, env);
+    completed = true;
+    console.log(`Smoke test passed with ${manager.name}.`);
+  } finally {
+    if (completed) {
+      await fs.rm(projectDir, { force: true, recursive: true });
+    } else {
+      console.error(`Preserving failed smoke workspace at ${projectDir}`);
+    }
+  }
+}
+
+async function runCreateDFactorySmoke(manager, framework, tarballSpecs) {
+  const frameworkDependencies =
+    framework === "react"
+      ? {
+          react: "^19.1.1",
+          "react-dom": "^19.1.1"
+        }
+      : {
+          vue: "^3.5.21"
+        };
+  const projectDir = await createTempProject(
+    `dfactory-create-${manager.name}-${framework}-`,
+    createManifest(`dfactory-create-${framework}-smoke`, {
+      "create-dfactory": tarballSpecs["create-dfactory"]
+    }, tarballSpecs)
+  );
+  const env = createPackageManagerEnv(projectDir);
+  const scaffoldDir = path.resolve(projectDir, "app");
+  const scaffoldEnv = createPackageManagerEnv(scaffoldDir);
+  let completed = false;
+
+  try {
+    await fs.mkdir(scaffoldDir, { recursive: true });
+    await writeJson(
+      path.resolve(scaffoldDir, "package.json"),
+      createManifest(`dfactory-create-${framework}-app`, frameworkDependencies, tarballSpecs)
+    );
+    await writeTypeScriptConfig(scaffoldDir, framework);
+    console.log(`[create-dfactory:${framework}] installing bootstrap dependencies...`);
+    manager.install(projectDir, env);
+    console.log(`[create-dfactory:${framework}] generating scaffold...`);
+    run(
+      path.resolve(projectDir, "node_modules/.bin/create-dfactory"),
+      ["app", "--package-manager", manager.name],
+      { cwd: projectDir, env }
+    );
+    await pinScaffoldedDependenciesToTarballs(scaffoldDir, tarballSpecs);
+    console.log(`[create-dfactory:${framework}] installing scaffolded dependencies...`);
+    manager.install(scaffoldDir, scaffoldEnv);
+    console.log(`[create-dfactory:${framework}] validating scaffold...`);
+    await assertScaffoldedProject(scaffoldDir, scaffoldEnv, "invoice");
+    completed = true;
+    console.log(`create-dfactory smoke test passed for ${framework} with ${manager.name}.`);
+  } finally {
+    if (completed) {
+      await fs.rm(projectDir, { force: true, recursive: true });
+    } else {
+      console.error(`Preserving failed scaffold workspace at ${projectDir}`);
+    }
+  }
+}
+
+const { packed } = await readSummary();
+const tarballSpecs = Object.fromEntries(packed.map((entry) => [entry.name, getTarballSpec(entry.tarballPath)]));
 
 const managers = [
   {
@@ -145,14 +284,10 @@ const managers = [
 ];
 
 for (const manager of managers) {
-  const projectDir = await createTempProject(`dfactory-smoke-${manager.name}-`, baseManifest);
-  const env = createPackageManagerEnv(projectDir);
+  await runManagerSmoke(manager, tarballSpecs);
+}
 
-  try {
-    manager.install(projectDir, env);
-    await assertReleaseInstall(projectDir, env);
-    console.log(`Smoke test passed with ${manager.name}.`);
-  } finally {
-    await fs.rm(projectDir, { force: true, recursive: true });
-  }
+for (const manager of managers) {
+  await runCreateDFactorySmoke(manager, "react", tarballSpecs);
+  await runCreateDFactorySmoke(manager, "vue", tarballSpecs);
 }

@@ -15,12 +15,10 @@
     "node": ">=20"
   },
   "type": "module",
-  "main": "dist/index.html",
   "exports": {
-    ".": "./dist/index.html",
     "./node": {
-      "import": "./node/index.js",
-      "types": "./node/index.d.ts"
+      "types": "./node/index.d.ts",
+      "import": "./node/index.js"
     }
   },
   "files": [
@@ -36,7 +34,8 @@
   },
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "vite build --emptyOutDir",
+    "prepack": "pnpm run build",
     "preview": "vite preview",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "lint": "eslint .",

@@ -14,6 +14,11 @@ npm create dfactory@latest
 pnpm create dfactory@latest
 # or
 yarn create dfactory
+
+# optionally force the generated install instructions
+pnpm create dfactory@latest --package-manager yarn
+# npm create requires an extra separator before forwarded args
+npm create dfactory@latest -- --package-manager yarn
 ```
 
 ## Development

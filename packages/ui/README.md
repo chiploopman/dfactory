@@ -25,7 +25,7 @@ Build UI assets:
 pnpm --filter @dfactory/ui build
 ```
 
-Node helpers are exported at `@dfactory/ui/node` for CLI integration.
+The package root ships static UI assets. JavaScript helpers are exported only from `@dfactory/ui/node` for CLI and server integration.
 
 ## Development
 

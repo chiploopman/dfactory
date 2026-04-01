@@ -32,13 +32,18 @@ Default endpoints:
 
 ```bash
 pnpm dev
+pnpm dev:vue
 pnpm build
-pnpm build:runtime
+pnpm build:examples
 pnpm serve
+pnpm serve:vue
 pnpm index
+pnpm index:vue
 pnpm doctor
+pnpm doctor:vue
 pnpm test
 pnpm test:e2e
+pnpm verify:clean-room
 ```
 
 ### Official Docs App
@@ -60,6 +65,27 @@ pnpm test
 pnpm test:e2e
 pnpm docs:ci
 ```
+
+GitHub CI is intentionally split by responsibility:
+
+- `quality` checks the publishable/runtime workspace on Node 20 and Node 24.
+- `docs` validates the private Next/Fumadocs docs app on Node 20.
+- `packages` validates publishable tarballs.
+- `e2e` validates the React and Vue runtime fixtures on Node 20.
+
+The docs app is intentionally not part of the Node 24 compatibility promise.
+
+The React and Vue example workspaces are internal runtime fixtures. They intentionally exercise the same `dfactory` CLI contract that published consumers use.
+
+If you change CI, release, packaging, or fixture plumbing, also run:
+
+```bash
+nvm use 20
+pnpm verify:clean-room
+pnpm verify:quality-node24
+```
+
+`pnpm verify:quality-node24` runs the `quality` path inside the official Linux `node:24-bookworm` Docker image, so Docker must be available locally. It uses Turbo's documented `--concurrency` flag for the package-test phase to keep the local container run stable on typical Docker Desktop memory limits while exercising the same checks as CI.
 
 ### Docs Maintenance Commands
 

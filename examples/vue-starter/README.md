@@ -10,7 +10,7 @@ Vue starter showcasing dFactory Vue SFC template workflows, including:
 ## Usage
 
 ```bash
-pnpm --filter @dfactory/example-vue-starter dfactory:dev
+pnpm --filter @dfactory/example-vue-starter dev
 ```
 
 Starter config file: `examples/vue-starter/dfactory.config.ts`

@@ -1,5 +1,13 @@
 {
   "$schema": "https://turbo.build/schema.json",
+  "globalDependencies": [
+    "package.json",
+    "pnpm-lock.yaml",
+    "tsconfig.base.json",
+    "tsconfig.workspace.base.json",
+    "tsconfig.typecheck.base.json",
+    "tsdown/**"
+  ],
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
@@ -51,7 +59,7 @@
     },
     "test": {
       "dependsOn": ["^build"],
-      "outputs": ["coverage/**"]
+      "outputs": []
     },
     "clean": {
       "cache": false

@@ -1,24 +1,25 @@
 # Repository Setup
 
-This repository uses two release paths:
+This repository is already past its first npm bootstrap publish.
 
-- One-time bootstrap publish: [`release-bootstrap.yml`](./workflows/release-bootstrap.yml)
-- Steady-state releases after bootstrap: [`release.yml`](./workflows/release.yml)
+From this point forward, the normal release path is:
 
-The bootstrap workflow uses a temporary npm token only once. The long-term workflow uses npm trusted publishing with GitHub OIDC and does not require a long-lived npm token.
+1. contributors add changesets
+2. `main` updates trigger [`release.yml`](./workflows/release.yml)
+3. Changesets opens or updates the automated release PR
+4. merging that PR publishes packages to npm through npm trusted publishing and GitHub OIDC
 
-The pnpm version for this repository is pinned in [`package.json`](../package.json) via `packageManager`. GitHub workflows intentionally do not pass a separate `version` input to `pnpm/action-setup`, so Actions uses the repo-pinned pnpm version instead of a second workflow-local pin.
+## Active Workflows
 
-## Before You Start
+- [`ci.yml`](./workflows/ci.yml): required quality, docs, e2e, and `packages` tarball validation
+- [`dependency-review.yml`](./workflows/dependency-review.yml): dependency risk review on pull requests
+- [`release.yml`](./workflows/release.yml): release PR creation and npm publish
 
-Make sure all of the following are true before you try to publish anything:
+There is no day-to-day bootstrap workflow anymore. If you still have an old `NPM_TOKEN` secret from the first publish, delete it.
 
-1. GitHub Actions is enabled for this repository.
-2. The workflow files are already on the default branch.
-3. Your npm account has publish rights for the `@dfactory` scope and the `create-dfactory` package name.
-4. You plan to run release jobs on GitHub-hosted runners. npm trusted publishing does not support self-hosted runners.
+## Public Package Set
 
-Public packages for this repo are defined in [`../.changeset/config.json`](../.changeset/config.json). At the time of writing, that publish set is:
+The publish set is defined in [`../.changeset/config.json`](../.changeset/config.json):
 
 - `@dfactory/cli`
 - `@dfactory/core`
@@ -38,216 +39,106 @@ Public packages for this repo are defined in [`../.changeset/config.json`](../.c
 - `@dfactory/ui`
 - `create-dfactory`
 
-## How To Set Up npm Publish Rights
+## Required GitHub Settings
 
-This repo publishes two kinds of package names:
-
-- scoped packages under `@dfactory/*`
-- one unscoped package: `create-dfactory`
-
-These are configured differently on npm.
-
-### `@dfactory/*` scope
-
-The clean setup is to use an npm organization named `dfactory`.
-
-1. Sign in to npm with the account that should control the scope.
-2. Create an organization named `dfactory`.
-   - On npm, the organization name becomes the scope, so `dfactory` becomes `@dfactory`.
-3. If you are the only maintainer, keep your npm user as an `Owner`.
-4. If you have multiple maintainers:
-   - invite them into the `dfactory` organization
-   - optionally create a team
-   - give that team `read/write` package access
-
-Important:
-
-- npm says organization `Owner`, `Admin`, and `Member` roles can create and publish packages in the organization scope.
-- npm also says write access for existing public organization packages is controlled through team `read/write` access.
-- For a solo maintainer, being the org `Owner` is the simplest path.
-- For a team, use org membership plus team `read/write` access.
-
-### `create-dfactory`
-
-This package is unscoped, so it is controlled by an npm user account, not by an npm organization.
-
-What this means in plain English:
-
-- there is no special npm scope or organization to configure for `create-dfactory`
-- there is no separate npm settings page you must prepare before the first publish
-- the npm user account that performs the first successful publish becomes the account that controls the package
-
-The setup is:
-
-1. Pick one npm user account that you want to be the initial owner of `create-dfactory`.
-2. Sign in to npm with that exact user account.
-3. Use that same account to create the bootstrap `NPM_TOKEN`.
-4. Run the bootstrap workflow with that token.
-5. After the first publish succeeds, that user account is the package owner/maintainer for `create-dfactory`.
-6. Only after the package exists, manage additional maintainers if needed.
-
-After the first publish, verify owners with:
-
-```bash
-npm owner ls create-dfactory
-```
-
-If needed, add another maintainer with:
-
-```bash
-npm owner add <npm-username> create-dfactory
-```
-
-Important:
-
-- npm says only user accounts can create and manage unscoped packages.
-- That means the account behind your bootstrap `NPM_TOKEN` must itself be allowed to publish `create-dfactory`.
-- For an unscoped package that does not exist yet, the practical rule is: publish it first from the user account that should control it, then use `npm owner` afterward if you want to share control. This is an inference from npm's unscoped publish flow plus the `npm owner` docs.
-
-### Quick checklist for `create-dfactory`
-
-Before first publish:
-
-1. Log in to npm in the browser with your chosen owner account.
-2. Make sure this is the same account you will use to generate the bootstrap token.
-3. Make sure the package name is the one you actually want: `create-dfactory`.
-
-First publish:
-
-1. Generate `NPM_TOKEN` from that user account.
-2. Put it into GitHub Actions secrets as `NPM_TOKEN`.
-3. Run `Release Bootstrap`.
-
-After first publish:
-
-1. Open `https://www.npmjs.com/package/create-dfactory`
-2. Verify the package exists and shows as public.
-3. Run `npm owner ls create-dfactory`
-4. Add other maintainers only if needed.
-
-### What account should create the bootstrap token?
-
-Use an npm user account that satisfies both of these:
-
-1. it is allowed to publish into the `@dfactory` scope
-2. it is an owner/maintainer of `create-dfactory`
-
-If one account does not have both permissions, the bootstrap workflow will fail.
-
-### If a name is already taken
-
-Inference from npm package/scope rules:
-
-- if you cannot create the `dfactory` organization, the `@dfactory` scope is already controlled by someone else
-- if you cannot publish `create-dfactory`, that unscoped package name is already owned by another npm user or already exists
-
-In that case you must do one of these:
-
-- use the existing rightful owner account
-- have the current owner add/transfer access
-- choose a different package name or scope
-
-## Important Token Rules
-
-### `GITHUB_TOKEN`
-
-Do not create this yourself.
-
-GitHub automatically provides `secrets.GITHUB_TOKEN` to workflow jobs. This repository already uses that built-in token in [`release.yml`](./workflows/release.yml). You should not create a repository secret named `GITHUB_TOKEN`, and you should not paste a personal access token into GitHub for this workflow.
-
-### `NPM_TOKEN`
-
-This is needed only for the very first publish, because npm trusted publishers can only be configured after the packages exist on npm.
-
-Use a short-lived npm granular access token, store it in GitHub as a repository Actions secret named exactly `NPM_TOKEN`, use it once with the bootstrap workflow, then delete the GitHub secret and revoke the npm token.
-
-## Recommended Repository Settings
-
-- Protect `main`
-- Require the `quality`, `docs`, and `e2e` checks before merge
-- Require pull requests before merging to `main`
-- Prefer squash merges
-
-## GitHub Repository Settings
-
-These settings are all in GitHub at:
+Open:
 
 `Repository -> Settings`
 
-### 1. Actions permissions
-
-Open:
-
-`Settings -> Actions -> General`
-
-Then:
-
-1. Make sure GitHub Actions is enabled.
-2. Under `Actions permissions`, allow the actions used by this repository.
-3. If you want the simplest setup, choose the option that allows actions and reusable workflows.
-4. If your repository uses a restrictive allowlist, make sure at least these actions are allowed:
-   - `actions/checkout`
-   - `actions/setup-node`
-   - `actions/upload-artifact`
-   - `pnpm/action-setup`
-   - `changesets/action`
-
-### 2. Workflow permissions
-
-Still in:
-
-`Settings -> Actions -> General`
-
-Then:
-
-1. Under `Workflow permissions`, select `Read and write permissions`.
-2. Turn on `Allow GitHub Actions to create and approve pull requests`.
-
-This is important because the release workflow uses Changesets to open and update the automated release PR.
-
-### 3. Branch protection
-
-Open:
-
-`Settings -> Rules` or `Settings -> Branches`
-
-Protect `main` and require these checks:
-
-- `quality`
-- `docs`
-- `e2e`
-
-## One-Time Bootstrap Publish
-
-Use this only for the very first release of brand-new npm package names.
-
-### Step 1. Create the npm token
-
-Open npm in your browser and sign in to the account that has publish access.
+### 1. Actions
 
 Go to:
 
-`npmjs.com -> profile picture -> Access Tokens`
+`Settings -> Actions -> General`
 
-Then:
+Set:
 
-1. Click `Generate New Token`.
-2. Create a granular access token.
-3. Give it a clear name such as `dfactory-bootstrap-release`.
-4. Set a short expiration.
-   - Recommendation: `1 day` if you plan to publish immediately.
-5. Give it write access.
-6. Copy the token value immediately and save it temporarily somewhere safe.
+1. GitHub Actions enabled
+2. Actions and reusable workflows allowed for this repository
+3. `Workflow permissions` set to `Read and write permissions`
+4. `Allow GitHub Actions to create and approve pull requests` enabled
+
+Why this matters:
+
+- `release.yml` needs to create and update the automated release PR
+- npm trusted publishing needs GitHub-hosted runners
+
+### 2. Branch protection
+
+Protect `main` and require these checks before merge:
+
+- `quality`
+- `docs`
+- `packages`
+- `e2e`
+
+Recommended:
+
+- require pull requests before merging
+- prefer squash merges
+- restrict direct pushes to `main`
+
+### 3. Code scanning
+
+Enable GitHub Code Scanning default setup.
+
+Open:
+
+`Settings -> Security -> Code security and analysis`
+
+Then enable `Code scanning` default setup.
+
+This repository uses JavaScript and TypeScript, and GitHub recommends default setup for eligible repositories because it is lower maintenance than a custom CodeQL workflow.
+
+### 4. Dependency graph and dependency review
+
+Open:
+
+`Settings -> Security -> Code security and analysis`
+
+Then enable:
+
+- `Dependency graph`
+- `Dependabot alerts`
+
+Why this matters:
+
+- [`dependency-review.yml`](./workflows/dependency-review.yml) depends on GitHub dependency graph support
+- pull requests will otherwise fail with a repository-settings error even if the workflow file is correct
+
+## Required npm Setup
+
+### 1. Keep the `@dfactory` scope and `create-dfactory` ownership healthy
+
+- `@dfactory/*` packages must remain publishable by the npm org or user that owns the `dfactory` scope
+- `create-dfactory` must remain owned by an npm user that the maintainers control
+
+### 2. Configure trusted publishing for every public package
+
+This is the steady-state publish path. Do this for each package listed above.
+
+Open npm and go to the package settings page:
+
+`npmjs.com -> Packages -> <package-name> -> Settings -> Trusted publishing`
+
+Use:
+
+- Provider: `GitHub Actions`
+- Organization or user: `chiploopman`
+- Repository: `dfactory`
+- Workflow filename: `release.yml`
+- Environment name: leave empty unless you later protect releases with a GitHub Environment
 
 Important:
 
-- npm only shows the full token once.
-- If your npm account or package policy requires 2FA for publish, the token may need the `Bypass two-factor authentication` option enabled for this one-time bootstrap publish.
-- This token should be temporary. Revoke it after the bootstrap succeeds.
+- configure the trusted publisher on every public package
+- use the filename only: `release.yml`
+- do not enter the full path
+- keep releases on GitHub-hosted runners
 
-Inference from the npm docs: for brand-new package names, the least error-prone bootstrap setup is a short-lived granular token with write access and immediate revocation after use. The docs explain granular tokens and token creation, but they do not spell out a single recommended package-selection strategy for a first publish of multiple new packages.
+### 3. Remove old bootstrap token secrets
 
-### Step 2. Add `NPM_TOKEN` to GitHub
+After the first publish, the repository should not rely on long-lived npm publish tokens anymore.
 
 Open:
 
@@ -255,172 +146,76 @@ Open:
 
 Then:
 
-1. Click `Secrets`.
-2. Click `New repository secret`.
-3. In `Name`, enter `NPM_TOKEN`.
-4. In `Secret`, paste the npm token value.
-5. Click `Add secret`.
+1. delete `NPM_TOKEN` if it still exists
+2. do not create a `GITHUB_TOKEN` secret; GitHub provides that automatically
 
-Use the exact name `NPM_TOKEN`. The bootstrap workflow maps that secret into `NODE_AUTH_TOKEN` for npm during publish.
+## How Releases Work
 
-### Step 3. Make sure the first version is the one you want
+### Contributor flow
 
-The bootstrap workflow publishes whatever versions are already in the package manifests.
+1. Make code changes
+2. If a public package changes, run:
 
-Before running it:
+```bash
+pnpm changeset
+```
 
-1. Verify package versions in the repo are correct.
-2. Verify local checks pass:
-   - `pnpm lint`
-   - `pnpm typecheck`
-   - `pnpm test`
-   - `pnpm test:e2e`
-   - `pnpm docs:ci`
-   - `pnpm release:pack`
-   - `pnpm release:smoke`
+3. Commit the generated file in `.changeset/`
+4. Open and merge the pull request into `main`
 
-### Step 4. Run the bootstrap workflow
+### Maintainer flow
 
-Open:
+1. Wait for `release.yml` to open or update the release PR
+2. Review the version bumps and changelog entries
+3. Merge the release PR
+4. GitHub Actions publishes the packages to npm
 
-`Repository -> Actions -> Release Bootstrap`
+The publish command already runs the repo’s pack and smoke verification before `changeset publish`.
 
-Then:
+## Post-Release Verification
 
-1. Click `Run workflow`.
-2. Choose the `main` branch.
-3. Start the workflow.
-4. Wait for it to finish.
+After a real publish:
 
-If it succeeds, your public packages should now exist on npm.
+1. Open the package on npm and confirm the new version exists
+2. Verify the package page shows trusted publishing metadata
+3. Verify provenance is present for the release
+4. Spot-check one or two packages with:
 
-### Step 5. Clean up the bootstrap token
+```bash
+npm view @dfactory/core version
+npm view create-dfactory version
+```
 
-Do this immediately after a successful first publish.
+## Archived Bootstrap Guidance
 
-1. Delete the `NPM_TOKEN` repository secret from GitHub.
-2. Revoke the npm access token on npmjs.com.
+This is only for the future case where you introduce a brand-new npm package name that does not yet exist on npm.
 
-At that point, token-based publishing should no longer be your normal path.
+Because npm trusted publishers are configured per package after the package exists, a brand-new package name needs a one-time bootstrap publish before it can switch to OIDC.
 
-## Long-Term Trusted Publishing Setup
+Use this only if you add a new public package name later:
 
-After the first publish, switch to npm trusted publishing.
+1. create a short-lived granular npm token with write access from the account that owns the target package name
+2. store it temporarily as `NPM_TOKEN` in GitHub Actions secrets
+3. perform the one-time bootstrap publish from a tightly controlled branch or manual temporary workflow
+4. configure trusted publishing for the new package
+5. delete the GitHub secret
+6. revoke the npm token
 
-### Step 1. Open each package on npm
+This archived procedure is not part of normal releases for the current package set.
 
-For each published public package:
+## Operational Notes
 
-1. Open the package page on npm.
-2. Go to `Settings`.
-3. Find `Trusted publishing`.
-4. Choose `GitHub Actions`.
-
-You must repeat this for each public package. npm allows only one trusted publisher configuration per package.
-
-### Step 2. Enter the repo values
-
-Use these exact values for this repository:
-
-- Organization or user: `chiploopman`
-- Repository: `dfactory`
-- Workflow filename: `release.yml`
-- Environment name: leave blank
-
-Important:
-
-- Enter only `release.yml`, not `.github/workflows/release.yml`.
-- The filename must match exactly, including `.yml`.
-- The workflow must run on GitHub-hosted runners.
-
-### Step 3. Keep the workflow as the OIDC publisher
-
-The steady-state workflow in [`release.yml`](./workflows/release.yml) is already configured for this:
-
-- `permissions` includes `id-token: write`
-- it uses `actions/setup-node` with the npm registry URL
-- it uses the built-in `GITHUB_TOKEN`
-
-You do not need to add a long-term npm token secret for this workflow.
-
-### Step 4. Optionally harden npm package settings
-
-After trusted publishing is working, npm recommends tightening package publishing access:
-
-1. Open each package on npm.
-2. Go to `Settings -> Publishing access`.
-3. Choose `Require two-factor authentication and disallow tokens`.
-4. Save.
-
-This blocks traditional token-based publishing while still allowing trusted publishing through OIDC.
-
-## Normal Release Flow After Bootstrap
-
-1. For the very first publish only, run `.github/workflows/release-bootstrap.yml`, because npm trusted publishers are configured per package after the package exists on npm.
-2. Configure each public npm package with a trusted publisher for `.github/workflows/release.yml`, then remove the `NPM_TOKEN` secret.
-3. Contributors add changesets in PRs that affect published packages.
-4. Merging to `main` updates or creates the automated release PR.
-5. Merging the release PR publishes public packages to npm via GitHub OIDC and creates GitHub releases.
-
-In practice, that means:
-
-1. A feature PR adds code plus a changeset.
-2. That PR merges into `main`.
-3. `Release` workflow runs and opens or updates the release PR.
-4. You review that release PR.
-5. You merge the release PR.
-6. The next `Release` workflow run publishes to npm and creates GitHub releases.
-
-## Safety Notes
-
-- Never commit tokens into `.npmrc`, workflow files, or source files.
-- Never put your npm token in GitHub repository variables. Use repository secrets.
-- Never create a manual GitHub secret called `GITHUB_TOKEN` for this setup.
-- Revoke bootstrap tokens after use.
-- Keep release jobs on GitHub-hosted runners for trusted publishing.
-
-## Troubleshooting
-
-### Release workflow cannot open a PR
-
-Check:
-
-1. `Settings -> Actions -> General -> Workflow permissions -> Read and write permissions`
-2. `Allow GitHub Actions to create and approve pull requests` is enabled
-
-### npm trusted publishing fails with `ENEEDAUTH`
-
-Check:
-
-1. The npm trusted publisher points to `chiploopman / dfactory / release.yml`
-2. The filename matches exactly
-3. The workflow is running on GitHub-hosted runners
-4. The package `repository.url` matches the GitHub repository URL exactly
-
-### Bootstrap publish fails with npm auth errors
-
-Check:
-
-1. The GitHub secret name is exactly `NPM_TOKEN`
-2. The token was copied fully
-3. The token has write access
-4. If your npm account/package enforces 2FA on writes, the token is allowed to bypass 2FA for this bootstrap publish
+- The pnpm version is pinned in [`../package.json`](../package.json) via `packageManager`
+- workflows intentionally do not pass a second pnpm version to `pnpm/action-setup`
+- published library packages use `tsdown` for builds; `@dfactory/ui` continues to use Vite
+- Playwright CI boots the React and Vue example workspaces directly instead of root wrapper configs
+- trusted publishing automatically generates npm provenance for GitHub Actions releases
+- self-hosted runners are not supported for npm trusted publishing
 
 ## Official References
 
+- Changesets action: https://github.com/changesets/action
 - npm trusted publishing: https://docs.npmjs.com/trusted-publishers/
-- npm access tokens: https://docs.npmjs.com/creating-and-viewing-access-tokens/
-- npm token overview: https://docs.npmjs.com/about-access-tokens
-- npm token revocation: https://docs.npmjs.com/revoking-access-tokens/
-- GitHub secrets: https://docs.github.com/en/actions/how-tos/write-workflows/choose-what-workflows-do/use-secrets
-- GitHub automatic `GITHUB_TOKEN`: https://docs.github.com/en/actions/tutorials/authenticate-with-github_token
-- GitHub Actions repository settings: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/enabling-features-for-your-repository/managing-github-actions-settings-for-a-repository
-- Changesets GitHub Action: https://github.com/changesets/action
-
-## Verification Commands
-
-```bash
-pnpm release:status
-pnpm release:pack
-pnpm release:smoke
-```
+- GitHub Node package publishing: https://docs.github.com/en/actions/tutorials/publish-packages/publish-nodejs-packages
+- GitHub Actions hardening: https://docs.github.com/actions/security-for-github-actions/security-guides/security-hardening-for-github-actions
+- GitHub code scanning default setup: https://docs.github.com/code-security/code-scanning/automatically-scanning-your-code-for-vulnerabilities-and-errors/setting-up-code-scanning-for-a-repository

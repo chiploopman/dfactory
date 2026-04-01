@@ -1,0 +1,9 @@
+{
+  "extends": "./tsconfig.workspace.base.json",
+  "compilerOptions": {
+    "declaration": false,
+    "declarationMap": false,
+    "noEmit": true,
+    "sourceMap": false
+  }
+}

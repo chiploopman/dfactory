@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 export const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 export const releaseOutputDir = path.resolve(repoRoot, ".release-pack");
 
-const workspaceRoots = ["packages", "apps"];
+const workspaceRoots = ["packages", "apps", "examples"];
 const changesetConfigPath = path.resolve(repoRoot, ".changeset/config.json");
 
 async function readJson(jsonPath) {
@@ -52,7 +52,6 @@ async function resolvePublishedPackages() {
   const changesetConfig = await readJson(changesetConfigPath);
   const configuredPackages = new Set(changesetConfig.fixed.flat());
   const ignoredPackages = new Set(changesetConfig.ignore ?? []);
-  const workspacePackages = await getWorkspacePackages();
   const packageMap = new Map(workspacePackages.map((pkg) => [pkg.name, pkg]));
 
   const published = [];
@@ -80,4 +79,5 @@ async function resolvePublishedPackages() {
   return published.sort((left, right) => left.name.localeCompare(right.name));
 }
 
+export const workspacePackages = await getWorkspacePackages();
 export const publishedPackages = await resolvePublishedPackages();

@@ -1,0 +1,7 @@
+{
+  "extends": "../../tsconfig.typecheck.base.json",
+  "compilerOptions": {
+    "rootDir": "../.."
+  },
+  "include": ["src"]
+}
