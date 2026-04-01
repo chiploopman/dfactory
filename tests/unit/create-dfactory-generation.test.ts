@@ -2,7 +2,7 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { runCreateDFactory } from "../../packages/create-dfactory/src/index.ts";
 
@@ -115,5 +115,38 @@ describe("create-dfactory generation", () => {
     expect(packageJson.dependencies?.["@dfactory/pdf-feature-standard"]).toBe("latest");
     expect(packageJson.dependencies?.["@dfactory/template-kit"]).toBe("latest");
     expect(packageJson.dependencies?.["@dfactory/pdf-primitives-react"]).toBeUndefined();
+  });
+
+  it("honors an explicit package manager override", async () => {
+    const cwd = await fs.mkdtemp(path.join(os.tmpdir(), "dfactory-create-manager-"));
+    await fs.writeFile(
+      path.join(cwd, "package.json"),
+      JSON.stringify(
+        {
+          name: "react-app",
+          version: "1.0.0",
+          dependencies: {
+            react: "^19.1.1"
+          }
+        },
+        null,
+        2
+      )
+    );
+
+    const logSpy = vi.spyOn(console, "log").mockImplementation(() => undefined);
+
+    process.chdir(cwd);
+    process.argv = ["node", "create-dfactory", "--package-manager", "yarn"];
+    await runCreateDFactory();
+
+    const output = logSpy.mock.calls
+      .flatMap((call) => call.map((value) => String(value)))
+      .join("\n");
+
+    expect(output).toContain("1. yarn");
+    expect(output).toContain("2. yarn run dfactory:dev");
+
+    logSpy.mockRestore();
   });
 });

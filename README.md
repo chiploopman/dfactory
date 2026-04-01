@@ -32,11 +32,15 @@ Default endpoints:
 
 ```bash
 pnpm dev
+pnpm dev:vue
 pnpm build
-pnpm build:runtime
+pnpm build:examples
 pnpm serve
+pnpm serve:vue
 pnpm index
+pnpm index:vue
 pnpm doctor
+pnpm doctor:vue
 pnpm test
 pnpm test:e2e
 ```

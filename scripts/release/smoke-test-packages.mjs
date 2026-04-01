@@ -51,6 +51,10 @@ async function writeJson(filePath, value) {
   await fs.writeFile(filePath, `${JSON.stringify(value, null, 2)}\n`);
 }
 
+async function readJson(filePath) {
+  return JSON.parse(await fs.readFile(filePath, "utf8"));
+}
+
 async function createTempProject(prefix, manifest) {
   const tempDir = await fs.mkdtemp(path.resolve(os.tmpdir(), prefix));
   await writeJson(path.resolve(tempDir, "package.json"), manifest);
@@ -137,12 +141,32 @@ async function writeTypeScriptConfig(projectDir, framework) {
   });
 }
 
+async function pinScaffoldedDependenciesToTarballs(projectDir, tarballSpecs) {
+  const packageJsonPath = path.resolve(projectDir, "package.json");
+  const packageJson = await readJson(packageJsonPath);
+  const dependencies = { ...(packageJson.dependencies ?? {}) };
+
+  for (const [packageName, currentVersion] of Object.entries(dependencies)) {
+    if (typeof currentVersion !== "string") {
+      continue;
+    }
+
+    const tarballSpec = tarballSpecs[packageName];
+    if (tarballSpec) {
+      dependencies[packageName] = tarballSpec;
+    }
+  }
+
+  packageJson.dependencies = dependencies;
+  await writeJson(packageJsonPath, packageJson);
+}
+
 async function assertScaffoldedProject(projectDir, env, expectedTemplateId) {
-  run("pnpm", ["exec", "dfactory", "build", "--ui-out-dir", ".dfactory/ui"], {
+  run(path.resolve(projectDir, "node_modules/.bin/dfactory"), ["build", "--ui-out-dir", ".dfactory/ui"], {
     cwd: projectDir,
     env
   });
-  run("pnpm", ["exec", "dfactory", "index"], {
+  run(path.resolve(projectDir, "node_modules/.bin/dfactory"), ["index"], {
     cwd: projectDir,
     env
   });
@@ -183,7 +207,7 @@ async function runManagerSmoke(manager, tarballSpecs) {
   }
 }
 
-async function runCreateDFactorySmoke(framework, tarballSpecs) {
+async function runCreateDFactorySmoke(manager, framework, tarballSpecs) {
   const frameworkDependencies =
     framework === "react"
       ? {
@@ -194,17 +218,14 @@ async function runCreateDFactorySmoke(framework, tarballSpecs) {
           vue: "^3.5.21"
         };
   const projectDir = await createTempProject(
-    `dfactory-create-${framework}-`,
+    `dfactory-create-${manager.name}-${framework}-`,
     createManifest(`dfactory-create-${framework}-smoke`, {
       "create-dfactory": tarballSpecs["create-dfactory"]
     }, tarballSpecs)
   );
   const env = createPackageManagerEnv(projectDir);
   const scaffoldDir = path.resolve(projectDir, "app");
-  const scaffoldEnv = {
-    ...createPackageManagerEnv(scaffoldDir),
-    npm_config_user_agent: "pnpm/10.0.0 node/v24.0.0 darwin arm64"
-  };
+  const scaffoldEnv = createPackageManagerEnv(scaffoldDir);
   let completed = false;
 
   try {
@@ -215,15 +236,20 @@ async function runCreateDFactorySmoke(framework, tarballSpecs) {
     );
     await writeTypeScriptConfig(scaffoldDir, framework);
     console.log(`[create-dfactory:${framework}] installing bootstrap dependencies...`);
-    run("pnpm", ["install", "--prefer-offline", "--ignore-scripts"], { cwd: projectDir, env });
+    manager.install(projectDir, env);
     console.log(`[create-dfactory:${framework}] generating scaffold...`);
-    run("pnpm", ["exec", "create-dfactory", "app"], { cwd: projectDir, env });
+    run(
+      path.resolve(projectDir, "node_modules/.bin/create-dfactory"),
+      ["app", "--package-manager", manager.name],
+      { cwd: projectDir, env }
+    );
+    await pinScaffoldedDependenciesToTarballs(scaffoldDir, tarballSpecs);
     console.log(`[create-dfactory:${framework}] installing scaffolded dependencies...`);
-    run("pnpm", ["install", "--prefer-offline", "--ignore-scripts"], { cwd: scaffoldDir, env: scaffoldEnv });
+    manager.install(scaffoldDir, scaffoldEnv);
     console.log(`[create-dfactory:${framework}] validating scaffold...`);
     await assertScaffoldedProject(scaffoldDir, scaffoldEnv, "invoice");
     completed = true;
-    console.log(`create-dfactory smoke test passed for ${framework}.`);
+    console.log(`create-dfactory smoke test passed for ${framework} with ${manager.name}.`);
   } finally {
     if (completed) {
       await fs.rm(projectDir, { force: true, recursive: true });
@@ -261,5 +287,7 @@ for (const manager of managers) {
   await runManagerSmoke(manager, tarballSpecs);
 }
 
-await runCreateDFactorySmoke("react", tarballSpecs);
-await runCreateDFactorySmoke("vue", tarballSpecs);
+for (const manager of managers) {
+  await runCreateDFactorySmoke(manager, "react", tarballSpecs);
+  await runCreateDFactorySmoke(manager, "vue", tarballSpecs);
+}

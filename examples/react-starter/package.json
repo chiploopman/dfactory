@@ -4,9 +4,16 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "dfactory:dev": "dfactory dev --config dfactory.config.ts",
-    "dfactory:build": "dfactory build",
-    "dfactory:serve": "dfactory serve --config dfactory.config.ts"
+    "dev": "dfactory dev --config dfactory.config.ts",
+    "build": "dfactory build",
+    "serve": "dfactory serve --config dfactory.config.ts",
+    "index": "dfactory index --config dfactory.config.ts",
+    "doctor": "dfactory doctor --config dfactory.config.ts",
+    "dfactory:dev": "pnpm run dev",
+    "dfactory:build": "pnpm run build",
+    "dfactory:serve": "pnpm run serve",
+    "dfactory:index": "pnpm run index",
+    "dfactory:doctor": "pnpm run doctor"
   },
   "dependencies": {
     "@dfactory/cli": "workspace:*",

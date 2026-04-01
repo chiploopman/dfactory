@@ -17,8 +17,8 @@
   "type": "module",
   "exports": {
     "./node": {
-      "import": "./node/index.js",
-      "types": "./node/index.d.ts"
+      "types": "./node/index.d.ts",
+      "import": "./node/index.js"
     }
   },
   "files": [

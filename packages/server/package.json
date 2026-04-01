@@ -30,7 +30,7 @@
     "access": "public"
   },
   "scripts": {
-    "build": "tsup src/index.ts --format esm --dts --clean",
+    "build": "tsdown",
     "prepack": "pnpm run build",
     "typecheck": "tsc -p tsconfig.typecheck.json",
     "lint": "eslint .",
@@ -49,8 +49,5 @@
     "chokidar": "^4.0.3",
     "zod": "^4.1.11",
     "bundle-require": "^5.1.0"
-  },
-  "devDependencies": {
-    "tsup": "^8.3.5"
   }
 }

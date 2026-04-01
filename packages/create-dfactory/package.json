@@ -28,7 +28,7 @@
     "access": "public"
   },
   "scripts": {
-    "build": "tsup src/index.ts --format esm --dts --clean",
+    "build": "tsdown",
     "prepack": "pnpm run build",
     "dev": "tsx src/index.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit",
@@ -40,7 +40,6 @@
     "picocolors": "^1.1.1"
   },
   "devDependencies": {
-    "tsup": "^8.3.5",
     "tsx": "^4.20.5"
   }
 }

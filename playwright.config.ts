@@ -14,8 +14,7 @@ export default defineConfig({
   },
   webServer: [
     {
-      command:
-        "node packages/cli/dist/index.js dev --host 127.0.0.1 --port 3210 --ui-port 3211 --config dfactory.config.ts",
+      command: "pnpm --dir examples/react-starter dev --host 127.0.0.1 --port 3210 --ui-port 3211",
       port: 3211,
       timeout: 120_000,
       reuseExistingServer: false,
@@ -23,15 +22,14 @@ export default defineConfig({
     },
     {
       command:
-        "node packages/cli/dist/index.js serve --host 127.0.0.1 --port 3220 --config dfactory.config.ts --ui-dist-dir packages/ui/dist",
+        "pnpm --dir examples/react-starter serve --host 127.0.0.1 --port 3220 --ui-dist-dir ../../packages/ui/dist",
       port: 3220,
       timeout: 120_000,
       reuseExistingServer: false,
       cwd: process.cwd()
     },
     {
-      command:
-        "node packages/cli/dist/index.js dev --host 127.0.0.1 --port 3310 --ui-port 3311 --config dfactory.config.vue.ts",
+      command: "pnpm --dir examples/vue-starter dev --host 127.0.0.1 --port 3310 --ui-port 3311",
       port: 3311,
       timeout: 120_000,
       reuseExistingServer: false,
@@ -39,7 +37,7 @@ export default defineConfig({
     },
     {
       command:
-        "node packages/cli/dist/index.js serve --host 127.0.0.1 --port 3320 --config dfactory.config.vue.ts --ui-dist-dir packages/ui/dist",
+        "pnpm --dir examples/vue-starter serve --host 127.0.0.1 --port 3320 --ui-dist-dir ../../packages/ui/dist",
       port: 3320,
       timeout: 120_000,
       reuseExistingServer: false,

@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 import pc from "picocolors";
 
 type SupportedFramework = "react" | "vue";
+type SupportedPackageManager = "npm" | "pnpm" | "yarn";
 
 interface PackageJson {
   name?: string;
@@ -73,6 +74,53 @@ function detectPackageManager(): "pnpm" | "yarn" | "npm" {
     return "yarn";
   }
   return "npm";
+}
+
+function isSupportedPackageManager(value: string): value is SupportedPackageManager {
+  return value === "npm" || value === "pnpm" || value === "yarn";
+}
+
+function parseCliArgs(args: string[]): {
+  packageManager?: SupportedPackageManager;
+  targetDir?: string;
+} {
+  let packageManager: SupportedPackageManager | undefined;
+  let targetDir: string | undefined;
+
+  for (let index = 0; index < args.length; index += 1) {
+    const arg = args[index];
+
+    if (arg === "--package-manager") {
+      const value = args[index + 1];
+      if (!value || !isSupportedPackageManager(value)) {
+        throw new Error("Expected --package-manager to be one of: npm, pnpm, yarn.");
+      }
+      packageManager = value;
+      index += 1;
+      continue;
+    }
+
+    if (arg.startsWith("--package-manager=")) {
+      const [, value = ""] = arg.split("=", 2);
+      if (!isSupportedPackageManager(value)) {
+        throw new Error("Expected --package-manager to be one of: npm, pnpm, yarn.");
+      }
+      packageManager = value;
+      continue;
+    }
+
+    if (arg.startsWith("-")) {
+      throw new Error(`Unknown option "${arg}". Supported options: --package-manager <npm|pnpm|yarn>.`);
+    }
+
+    if (targetDir) {
+      throw new Error("Only one target directory can be provided.");
+    }
+
+    targetDir = arg;
+  }
+
+  return { packageManager, targetDir };
 }
 
 function hasDependency(packageJson: PackageJson | undefined, names: string[]): boolean {
@@ -170,7 +218,8 @@ function applyPackageUpdates(existing: PackageJson, frameworkSpec: FrameworkTemp
 }
 
 export async function runCreateDFactory() {
-  const targetArg = process.argv[2];
+  const { packageManager: packageManagerOverride, targetDir } = parseCliArgs(process.argv.slice(2));
+  const targetArg = targetDir;
   const cwd = targetArg ? path.resolve(process.cwd(), targetArg) : process.cwd();
 
   await fs.mkdir(cwd, { recursive: true });
@@ -204,7 +253,7 @@ export async function runCreateDFactory() {
     tokens
   });
 
-  const packageManager = detectPackageManager();
+  const packageManager = packageManagerOverride ?? detectPackageManager();
   const installCmd =
     packageManager === "pnpm"
       ? "pnpm install"
@@ -220,11 +269,24 @@ export async function runCreateDFactory() {
   console.log("3. Open http://127.0.0.1:3211");
 }
 
-const isMainModule = process.argv[1]
-  ? path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)
-  : false;
+async function isMainModule(): Promise<boolean> {
+  if (!process.argv[1]) {
+    return false;
+  }
 
-if (isMainModule) {
+  try {
+    const [argvPath, modulePath] = await Promise.all([
+      fs.realpath(process.argv[1]),
+      fs.realpath(fileURLToPath(import.meta.url))
+    ]);
+
+    return argvPath === modulePath;
+  } catch {
+    return false;
+  }
+}
+
+if (await isMainModule()) {
   runCreateDFactory().catch((error) => {
     console.error(pc.red(`Failed to initialize DFactory: ${error instanceof Error ? error.message : String(error)}`));
     process.exit(1);

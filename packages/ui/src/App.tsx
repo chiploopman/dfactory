@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type CSSProperties } from "react"
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react"
 import { AnimatePresence, motion } from "framer-motion"
 import {
   AlertCircle,
@@ -144,6 +144,8 @@ export default function App() {
   const [sourceExplorerNavSize, setSourceExplorerNavSize] = useState(
     SOURCE_EXPLORER_NAV_DEFAULT_PERCENT,
   )
+  const payloadTemplateIdRef = useRef<string | undefined>(undefined)
+  const payloadDirtyRef = useRef(false)
   const [isDesktop, setIsDesktop] = useState(() => {
     if (typeof window === "undefined") {
       return false
@@ -270,25 +272,50 @@ export default function App() {
     }
 
     const templateId = selectedId
+    const templateChanged = payloadTemplateIdRef.current !== templateId
+    if (templateChanged) {
+      payloadTemplateIdRef.current = templateId
+      payloadDirtyRef.current = false
+    }
+    let cancelled = false
 
     async function loadTemplateAssets() {
       const [schema, features] = await Promise.all([
         fetchTemplateSchema(templateId),
         fetchTemplateFeatures(templateId),
       ])
+      if (cancelled) {
+        return
+      }
       setSchemaJson(pretty(schema))
       setFeaturesJson(pretty(features.features))
 
       if (features.examples.length > 0) {
-        setPayloadText(pretty(features.examples[0].payload))
+        const nextPayloadText = pretty(features.examples[0].payload)
+        setPayloadText((currentPayloadText) => {
+          if (
+            payloadTemplateIdRef.current !== templateId ||
+            payloadDirtyRef.current
+          ) {
+            return currentPayloadText
+          }
+
+          return nextPayloadText
+        })
       }
 
       if (sourceEnabled) {
         try {
           const source = await fetchTemplateSource(templateId)
+          if (cancelled) {
+            return
+          }
           setSourceManifest(source)
           setActiveSourceFilePath(resolveInitialSourceFilePath(source))
         } catch {
+          if (cancelled) {
+            return
+          }
           setSourceManifest(undefined)
           setActiveSourceFilePath(undefined)
         }
@@ -299,12 +326,19 @@ export default function App() {
     }
 
     loadTemplateAssets().catch((loadError) => {
+      if (cancelled) {
+        return
+      }
       setError(
         loadError instanceof Error
           ? loadError.message
           : "Failed to load template assets.",
       )
     })
+
+    return () => {
+      cancelled = true
+    }
   }, [selectedId, sourceEnabled])
 
   useEffect(() => {
@@ -512,7 +546,11 @@ export default function App() {
         {activePanel.id === "payload" ? (
           <CodeEditor
             value={payloadText}
-            onChange={setPayloadText}
+            onChange={(nextValue) => {
+              payloadTemplateIdRef.current = selectedId
+              payloadDirtyRef.current = true
+              setPayloadText(nextValue)
+            }}
             config={getInspectorEditorConfig({ panel: "payload" })}
             className="h-full"
             data-testid="payload-editor"

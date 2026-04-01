@@ -19,14 +19,14 @@ pnpm test:e2e
 pnpm docs:ci
 ```
 
-Full monorepo builds and runtime-focused builds are intentionally separate:
+Full monorepo builds and example-runtime builds are intentionally separate:
 
 ```bash
 pnpm build
-pnpm build:runtime
+pnpm build:examples
 ```
 
-Use `pnpm build` to validate the whole repo, and `pnpm build:runtime` for local CLI, Docker, e2e, and release-packaging flows.
+Use `pnpm build` to validate the whole repo, and `pnpm build:examples` to exercise the React and Vue runtime fixtures used by e2e and packaging verification.
 
 ## Changesets
 

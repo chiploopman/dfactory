@@ -11,7 +11,7 @@ From this point forward, the normal release path is:
 
 ## Active Workflows
 
-- [`ci.yml`](./workflows/ci.yml): required quality, docs, and e2e validation
+- [`ci.yml`](./workflows/ci.yml): required quality, docs, e2e, and `packages` tarball validation
 - [`dependency-review.yml`](./workflows/dependency-review.yml): dependency risk review on pull requests
 - [`release.yml`](./workflows/release.yml): release PR creation and npm publish
 
@@ -69,6 +69,7 @@ Protect `main` and require these checks before merge:
 
 - `quality`
 - `docs`
+- `packages`
 - `e2e`
 
 Recommended:
@@ -88,6 +89,22 @@ Open:
 Then enable `Code scanning` default setup.
 
 This repository uses JavaScript and TypeScript, and GitHub recommends default setup for eligible repositories because it is lower maintenance than a custom CodeQL workflow.
+
+### 4. Dependency graph and dependency review
+
+Open:
+
+`Settings -> Security -> Code security and analysis`
+
+Then enable:
+
+- `Dependency graph`
+- `Dependabot alerts`
+
+Why this matters:
+
+- [`dependency-review.yml`](./workflows/dependency-review.yml) depends on GitHub dependency graph support
+- pull requests will otherwise fail with a repository-settings error even if the workflow file is correct
 
 ## Required npm Setup
 
@@ -190,6 +207,8 @@ This archived procedure is not part of normal releases for the current package s
 
 - The pnpm version is pinned in [`../package.json`](../package.json) via `packageManager`
 - workflows intentionally do not pass a second pnpm version to `pnpm/action-setup`
+- published library packages use `tsdown` for builds; `@dfactory/ui` continues to use Vite
+- Playwright CI boots the React and Vue example workspaces directly instead of root wrapper configs
 - trusted publishing automatically generates npm provenance for GitHub Actions releases
 - self-hosted runners are not supported for npm trusted publishing
 

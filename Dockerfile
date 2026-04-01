@@ -3,14 +3,15 @@ WORKDIR /app
 RUN corepack enable
 
 FROM base AS deps
-COPY package.json pnpm-workspace.yaml turbo.json tsconfig.base.json tsconfig.json ./
+COPY package.json pnpm-workspace.yaml turbo.json tsconfig.base.json tsconfig.json tsconfig.workspace.base.json ./
+COPY tsdown ./tsdown
 COPY packages ./packages
 COPY examples ./examples
 RUN pnpm install --no-frozen-lockfile
 
 FROM deps AS build
-RUN pnpm build:runtime
-RUN node packages/cli/dist/index.js build --ui-out-dir /app/.dfactory/ui
+RUN pnpm build:example-react
+RUN node packages/cli/dist/index.js build --config examples/react-starter/dfactory.config.ts --ui-out-dir /app/.dfactory/ui
 
 FROM base AS runtime
 WORKDIR /app

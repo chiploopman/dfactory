@@ -7,7 +7,7 @@ import { publishedPackages, releaseOutputDir, repoRoot } from "./published-packa
 const summaryPath = path.resolve(releaseOutputDir, "pack-summary.json");
 const archiveDocFiles = new Set(["package.json", "README.md", "CHANGELOG.md", "LICENSE"]);
 
-function isAllowedTsupPackageFile(filePath) {
+function isAllowedLibraryPackageFile(filePath) {
   return (
     archiveDocFiles.has(filePath) ||
     filePath === "dist/index.js" ||
@@ -47,7 +47,7 @@ function getAllowedFileMatcher(packageName) {
     return isAllowedCreateDFactoryFile;
   }
 
-  return isAllowedTsupPackageFile;
+  return isAllowedLibraryPackageFile;
 }
 
 function getRequiredFiles(packageName) {
@@ -60,6 +60,10 @@ function getRequiredFiles(packageName) {
   }
 
   return ["dist/index.js", "dist/index.d.ts"];
+}
+
+function shouldRunAttw(packageName) {
+  return !["@dfactory/cli", "@dfactory/ui", "create-dfactory"].includes(packageName);
 }
 
 function run(command, args, options = {}) {
@@ -83,6 +87,14 @@ function run(command, args, options = {}) {
   }
 
   return result;
+}
+
+function validateTarball(packageName, tarballPath) {
+  run("pnpm", ["exec", "publint", "run", tarballPath, "--strict", "--level", "warning"]);
+
+  if (shouldRunAttw(packageName)) {
+    run("pnpm", ["exec", "attw", tarballPath, "--profile", "esm-only"]);
+  }
 }
 
 async function listTarballs() {
@@ -142,6 +154,7 @@ for (const pkg of publishedPackages) {
   }
 
   const tarballPath = path.resolve(releaseOutputDir, newTarball);
+  validateTarball(pkg.name, tarballPath);
   const extractedDir = path.resolve(releaseOutputDir, `.extract-${newTarball.replace(/\.tgz$/, "")}`);
   const packageDir = await extractPackage(tarballPath, extractedDir);
   const packageJsonPath = path.resolve(packageDir, "package.json");
