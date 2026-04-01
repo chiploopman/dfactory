@@ -1,6 +1,10 @@
 {
   "extends": "./tsconfig.base.json",
   "compilerOptions": {
+    "declaration": false,
+    "declarationMap": false,
+    "noEmit": true,
+    "sourceMap": false,
     "paths": {
       "@dfactory/cli": ["./packages/cli/src/index.ts"],
       "@dfactory/core": ["./packages/core/src/index.ts"],

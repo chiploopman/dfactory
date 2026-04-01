@@ -16,4 +16,4 @@ Choose the affected public package, describe the user-facing change, and commit 
 2. GitHub Actions opens or updates the release PR.
 3. Merge the release PR to publish the lockstep package suite to npm.
 
-Private packages such as `@dfactory/ui`, `@dfactory/docs`, and the examples are excluded from publishing.
+Private workspace packages such as `@dfactory/docs` and the example apps are excluded from publishing.

@@ -14,25 +14,32 @@ permissions:
   contents: read
 
 jobs:
-  quality:
-    name: quality
+  quality-matrix:
+    name: quality / node ${{ matrix.node-version }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        node-version: [20, 24]
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6.0.1
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v4.2.0
 
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6.0.0
         with:
-          node-version: 20
+          node-version: ${{ matrix.node-version }}
           cache: pnpm
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      - name: Validate publish governance
+        run: pnpm release:check-governance
 
       - name: Lint
         run: pnpm lint
@@ -43,19 +50,29 @@ jobs:
       - name: Test
         run: pnpm test
 
+  quality:
+    name: quality
+    runs-on: ubuntu-latest
+    if: ${{ always() }}
+    needs:
+      - quality-matrix
+    steps:
+      - name: Enforce matrix success
+        run: test "${{ needs.quality-matrix.result }}" = "success"
+
   docs:
     name: docs
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6.0.1
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v4.2.0
 
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6.0.0
         with:
           node-version: 20
           cache: pnpm
@@ -72,13 +89,13 @@ jobs:
     timeout-minutes: 45
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6.0.1
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v4.2.0
 
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6.0.0
         with:
           node-version: 20
           cache: pnpm
@@ -94,7 +111,7 @@ jobs:
 
       - name: Upload Playwright artifacts
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5.0.0
         with:
           name: playwright-artifacts
           path: |
