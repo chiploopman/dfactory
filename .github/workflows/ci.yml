@@ -45,7 +45,7 @@ jobs:
         run: pnpm lint
 
       - name: Typecheck
-        run: pnpm typecheck
+        run: pnpm typecheck:quality
 
       - name: Test
         run: pnpm test
@@ -57,6 +57,7 @@ jobs:
     needs:
       - quality-matrix
     steps:
+      # Keep one stable required check name while the Node-version matrix expands underneath it.
       - name: Enforce matrix success
         run: test "${{ needs.quality-matrix.result }}" = "success"
 
