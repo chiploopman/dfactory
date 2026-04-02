@@ -1,4 +1,3 @@
-#!/usr/bin/env node
 import fs from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -267,28 +266,4 @@ export async function runCreateDFactory() {
   console.log(`1. ${installCmd}`);
   console.log(`2. ${packageManager} run dfactory:dev`);
   console.log("3. Open http://127.0.0.1:3211");
-}
-
-async function isMainModule(): Promise<boolean> {
-  if (!process.argv[1]) {
-    return false;
-  }
-
-  try {
-    const [argvPath, modulePath] = await Promise.all([
-      fs.realpath(process.argv[1]),
-      fs.realpath(fileURLToPath(import.meta.url))
-    ]);
-
-    return argvPath === modulePath;
-  } catch {
-    return false;
-  }
-}
-
-if (await isMainModule()) {
-  runCreateDFactory().catch((error) => {
-    console.error(pc.red(`Failed to initialize DFactory: ${error instanceof Error ? error.message : String(error)}`));
-    process.exit(1);
-  });
 }

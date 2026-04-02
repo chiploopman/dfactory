@@ -14,12 +14,17 @@ npm create dfactory@latest
 pnpm create dfactory@latest
 # or
 yarn create dfactory
+#
+# fallback if your package manager does not support `create`
+npx create-dfactory@latest
 
 # optionally force the generated install instructions
 pnpm create dfactory@latest --package-manager yarn
 # npm create requires an extra separator before forwarded args
 npm create dfactory@latest -- --package-manager yarn
 ```
+
+Supported consumer platforms: Windows, macOS, and Linux.
 
 ## Development
 

@@ -84,6 +84,41 @@ jobs:
       - name: Docs CI
         run: pnpm docs:ci
 
+  initializer:
+    name: initializer / ${{ matrix.os }} / ${{ matrix.manager }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            manager: npm
+          - os: ubuntu-latest
+            manager: pnpm
+          - os: macos-latest
+            manager: npm
+          - os: windows-latest
+            manager: npm
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6.0.2
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v5.0.0
+
+      - name: Setup Node
+        uses: actions/setup-node@v6.3.0
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Verify packaged initializer
+        run: pnpm verify:initializer -- --manager ${{ matrix.manager }}
+
   packages:
     name: packages
     runs-on: ubuntu-latest

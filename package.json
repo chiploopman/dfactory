@@ -55,6 +55,7 @@
     "test": "pnpm test:repo && pnpm test:packages",
     "test:licenses": "vitest run tests/unit/pdf-feature-license-policy.test.ts",
     "test:e2e": "pnpm build:examples && playwright test",
+    "verify:initializer": "node scripts/ci/smoke-create-dfactory.mjs",
     "verify:clean-room": "node scripts/ci/verify-clean-room.mjs",
     "verify:quality-node24": "node scripts/ci/verify-quality-node24.mjs",
     "release:check-governance": "node scripts/release/check-publish-governance.mjs",
@@ -62,6 +63,7 @@
     "release:version": "changeset version && pnpm install --no-frozen-lockfile",
     "release:pack": "pnpm release:check-governance && node scripts/release/pack-packages.mjs",
     "release:smoke": "node scripts/release/smoke-test-packages.mjs",
+    "release:smoke:create-dfactory:registry": "node scripts/release/smoke-create-dfactory-registry.mjs",
     "release:verify": "pnpm release:pack && pnpm release:smoke",
     "release:publish": "pnpm release:verify && changeset publish",
     "clean": "turbo run clean && rm -rf node_modules"

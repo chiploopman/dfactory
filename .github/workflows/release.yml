@@ -46,3 +46,7 @@ jobs:
           commit: "chore: release packages"
           title: "chore: release packages"
           createGithubReleases: true
+
+      - name: Smoke published create-dfactory initializer
+        if: steps.changesets.outputs.published == 'true'
+        run: pnpm release:smoke:create-dfactory:registry
