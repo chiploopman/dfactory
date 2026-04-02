@@ -84,7 +84,7 @@
     "tsdown": "^0.21.7",
     "turbo": "^2.9.3",
     "typescript": "^5.9.2",
-    "typescript-eslint": "^8.46.1",
+    "typescript-eslint": "^8.58.0",
     "vitest": "^3.2.4",
     "@dfactory/cli": "workspace:*",
     "@dfactory/core": "workspace:*",
