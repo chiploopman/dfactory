@@ -41,6 +41,7 @@ function isAllowedUiFile(filePath) {
 function isAllowedCreateDFactoryFile(filePath) {
   return (
     archiveDocFiles.has(filePath) ||
+    filePath === "bin/create-dfactory.cjs" ||
     filePath === "dist/index.js" ||
     filePath === "dist/index.d.ts" ||
     filePath.startsWith("templates/")
@@ -73,7 +74,7 @@ function getRequiredFiles(packageName) {
   }
 
   if (packageName === "create-dfactory") {
-    return ["dist/index.js", "dist/index.d.ts", "templates/base/dfactory.config.ts"];
+    return ["bin/create-dfactory.cjs", "dist/index.js", "dist/index.d.ts", "templates/base/dfactory.config.ts"];
   }
 
   return ["dist/index.js", "dist/index.d.ts"];
@@ -188,6 +189,14 @@ for (const pkg of publishedPackages) {
 
   if (packageJsonRaw.includes("workspace:")) {
     throw new Error(`Packed manifest still contains workspace protocol: ${pkg.name}.`);
+  }
+
+  if (pkg.name === "@dfactory/cli" && packageJson.bin?.dfactory !== "bin/dfactory.js") {
+    throw new Error("Packed @dfactory/cli manifest has an unexpected bin mapping.");
+  }
+
+  if (pkg.name === "create-dfactory" && packageJson.bin?.["create-dfactory"] !== "bin/create-dfactory.cjs") {
+    throw new Error("Packed create-dfactory manifest has an unexpected bin mapping.");
   }
 
   const packageFiles = await listPackageFiles(packageDir);

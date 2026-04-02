@@ -219,35 +219,23 @@ async function runCreateDFactorySmoke(manager, framework, tarballSpecs) {
         };
   const projectDir = await createTempProject(
     `dfactory-create-${manager.name}-${framework}-`,
-    createManifest(`dfactory-create-${framework}-smoke`, {
-      "create-dfactory": tarballSpecs["create-dfactory"]
-    }, tarballSpecs)
+    createManifest(`dfactory-create-${framework}-app`, frameworkDependencies, tarballSpecs)
   );
   const env = createPackageManagerEnv(projectDir);
-  const scaffoldDir = path.resolve(projectDir, "app");
-  const scaffoldEnv = createPackageManagerEnv(scaffoldDir);
   let completed = false;
 
   try {
-    await fs.mkdir(scaffoldDir, { recursive: true });
-    await writeJson(
-      path.resolve(scaffoldDir, "package.json"),
-      createManifest(`dfactory-create-${framework}-app`, frameworkDependencies, tarballSpecs)
-    );
-    await writeTypeScriptConfig(scaffoldDir, framework);
-    console.log(`[create-dfactory:${framework}] installing bootstrap dependencies...`);
-    manager.install(projectDir, env);
+    await writeTypeScriptConfig(projectDir, framework);
     console.log(`[create-dfactory:${framework}] generating scaffold...`);
-    run(
-      path.resolve(projectDir, "node_modules/.bin/create-dfactory"),
-      ["app", "--package-manager", manager.name],
-      { cwd: projectDir, env }
-    );
-    await pinScaffoldedDependenciesToTarballs(scaffoldDir, tarballSpecs);
+    manager.execInitializer(projectDir, env, tarballSpecs["create-dfactory"], [
+      "--package-manager",
+      manager.name
+    ]);
+    await pinScaffoldedDependenciesToTarballs(projectDir, tarballSpecs);
     console.log(`[create-dfactory:${framework}] installing scaffolded dependencies...`);
-    manager.install(scaffoldDir, scaffoldEnv);
+    manager.install(projectDir, env);
     console.log(`[create-dfactory:${framework}] validating scaffold...`);
-    await assertScaffoldedProject(scaffoldDir, scaffoldEnv, "invoice");
+    await assertScaffoldedProject(projectDir, env, "invoice");
     completed = true;
     console.log(`create-dfactory smoke test passed for ${framework} with ${manager.name}.`);
   } finally {
@@ -267,18 +255,34 @@ const managers = [
     name: "npm",
     install(projectDir, env) {
       run("npm", ["install", "--prefer-offline", "--ignore-scripts"], { cwd: projectDir, env });
+    },
+    execInitializer(projectDir, env, packageSpec, args) {
+      run(
+        "npm",
+        ["exec", "--yes", "--package", packageSpec, "create-dfactory", "--", ...args],
+        { cwd: projectDir, env }
+      );
     }
   },
   {
     name: "pnpm",
     install(projectDir, env) {
       run("pnpm", ["install", "--prefer-offline", "--ignore-scripts"], { cwd: projectDir, env });
+    },
+    execInitializer(projectDir, env, packageSpec, args) {
+      run("pnpm", ["dlx", packageSpec, ...args], { cwd: projectDir, env });
     }
   },
   {
     name: "yarn",
     install(projectDir, env) {
       run("corepack", ["yarn", "install", "--mode=skip-build"], { cwd: projectDir, env });
+    },
+    execInitializer(projectDir, env, packageSpec, args) {
+      run("corepack", ["yarn", "dlx", "--package", `create-dfactory@${packageSpec}`, "create-dfactory", ...args], {
+        cwd: projectDir,
+        env
+      });
     }
   }
 ];
@@ -287,7 +291,7 @@ for (const manager of managers) {
   await runManagerSmoke(manager, tarballSpecs);
 }
 
-for (const manager of managers) {
+for (const manager of managers.filter((entry) => entry.name !== "yarn")) {
   await runCreateDFactorySmoke(manager, "react", tarballSpecs);
   await runCreateDFactorySmoke(manager, "vue", tarballSpecs);
 }

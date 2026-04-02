@@ -16,11 +16,18 @@
   },
   "type": "module",
   "bin": {
-    "create-dfactory": "dist/index.js"
+    "create-dfactory": "bin/create-dfactory.cjs"
   },
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
   "files": [
+    "bin",
     "dist",
     "templates"
   ],
