@@ -42,14 +42,6 @@ pnpm create dfactory@latest
 yarn create dfactory
 ```
 
-Supported consumer platforms: Windows, macOS, and Linux.
-
-If your package manager does not support `create`, use the npm fallback:
-
-```bash
-npx create-dfactory@latest
-```
-
 Optional package-manager override:
 
 ```bash
